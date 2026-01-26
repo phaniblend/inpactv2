@@ -426,6 +426,7 @@ button:disabled {
 
 .task-button-content {
     padding: 20px 24px;
+   margin:2%;
 }
 
 .task-button-header {
