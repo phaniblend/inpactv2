@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Objectives Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header id="mainHeader">
+            <h1>🎯 Learning Objectives Generator</h1>
+            <p class="subtitle">Discover what you'll learn by building real projects</p>
+        </header>
+
+        <main>
+            <!-- ===================================================================== -->
+            <!-- SCREEN 1: Input Form -->
+            <!-- ===================================================================== -->
+            <form id="objectivesForm">
+                <div class="form-group">
+                    <label for="task">
+                        What do you want to build?
+                        <span class="hint">e.g., "login form", "todo app", "weather dashboard"</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="task" 
+                        name="task" 
+                        placeholder="Enter your coding task..."
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="technology">
+                        Using which technology?
+                        <span class="hint">e.g., "React", "Vue", "vanilla JavaScript"</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="technology" 
+                        name="technology" 
+                        placeholder="Enter the technology/framework..."
+                        required
+                    >
+                </div>
+
+                <button type="submit" id="generateBtn">
+                    Start Learning
+                </button>
+            </form>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Analyzing learning objectives...</p>
+            </div>
+
+            <!-- ===================================================================== -->
+            <!-- SCREEN 2: Learning Objectives Results -->
+            <!-- ===================================================================== -->
+            <div id="results" class="results hidden">
+                <div class="results-header">
+                    <h2>📚 Your Learning Path</h2>
+                    <div class="task-info">
+                        <div class="info-row">
+                            <span class="info-label">Project:</span>
+                            <span id="resultTask" class="info-value"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Technology:</span>
+                            <span id="resultTech" class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="objectives-section">
+                    <h3 class="section-title">By the end of this task, you will be able to:</h3>
+                    <div id="objectives" class="objectives-content"></div>
+                </div>
+
+                <div class="next-step-section">
+                    <!-- <div class="next-step-header">
+                        <h3>Continue</h3>
+                        <p>Get a step-by-step roadmap with interactive tutorials</p>
+                    </div> -->
+
+                    <button id="startBuildingBtn" class="start-building-btn">
+                        Continue
+                    </button>
+                    
+                    <button id="newSearchBtn" class="secondary-btn">
+                        Start a Different Project
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task Breakdown Loading -->
+            <div id="breakdownLoading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Creating your personalized learning roadmap...</p>
+            </div>
+
+            <!-- ===================================================================== -->
+            <!-- SCREEN 3: Task Breakdown (Clickable Tasks) -->
+            <!-- ===================================================================== -->
+            <div id="breakdownResults" class="breakdown-results hidden">
+                <div class="breakdown-header">
+                    <div class="header-content">
+                        <h2>🚀 Your Learning Roadmap</h2>
+                        <p class="breakdown-subtitle">Click any task to start learning</p>
+                    </div>
+                    <div id="progressBar" class="progress-indicator">
+                        <div class="progress-text">
+                            <span id="progressCount">0 of 0</span> tasks completed
+                        </div>
+                        <div class="progress-bar-container">
+                            <div id="progressBarFill" class="progress-bar-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tasksList" class="tasks-container"></div>
+
+                <div class="action-buttons">
+                    <button id="backToObjectives" class="secondary-btn">
+                        ← Back to Learning Objectives
+                    </button>
+                    <button id="startNewBtn" class="secondary-btn">
+                        Start a Different Project
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tutorial Loading -->
+            <div id="tutorialLoading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Preparing your interactive tutorial...</p>
+            </div>
+
+            <!-- ===================================================================== -->
+            <!-- SCREEN 4: Tutorial View (NEW - Phase 3) -->
+            <!-- ===================================================================== -->
+            <div id="tutorialView" class="tutorial-view hidden">
+                <!-- Tutorial Header -->
+                <div class="tutorial-header">
+                    <button id="backToTasks" class="back-btn">← Back to Tasks</button>
+                    <div class="tutorial-title">
+                        <h2 id="tutorialTaskTitle"></h2>
+                    </div>
+                </div>
+
+                <!-- Step Progress -->
+                <div class="step-progress">
+                    <div class="step-progress-text">
+                        Step <span id="currentStepNum">1</span> of <span id="totalSteps">1</span>
+                    </div>
+                    <div class="step-progress-bar">
+                        <div id="stepProgressFill" class="step-progress-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Step Content -->
+                <div id="stepContent" class="step-content">
+                    <!-- Goal Section -->
+                    <div class="step-section goal-section">
+                        <h3 class="step-section-title">🎯 Goal</h3>
+                        <div id="stepGoal" class="step-section-content"></div>
+                    </div>
+
+                    <!-- Concept Section -->
+                    <div class="step-section concept-section">
+                        <h3 class="step-section-title">💡 Concept</h3>
+                        <div id="stepConcept" class="step-section-content"></div>
+                    </div>
+
+                    <!-- Example Section -->
+                    <div class="step-section example-section">
+                        <h3 class="step-section-title">📚 Example</h3>
+                        <p id="exampleDescription" class="example-description"></p>
+                        <div class="code-container">
+                            <pre><code id="exampleCode" class="code-block"></code></pre>
+                            <button class="copy-code-btn" id="copyExampleBtn">📋 Copy Example</button>
+                        </div>
+                        <div id="codeAnnotations" class="code-annotations"></div>
+                    </div>
+
+                    <!-- Practice Section -->
+                    <div class="step-section practice-section">
+                        <h3 class="step-section-title">✍️ Now You Try!</h3>
+                        <p id="practiceInstruction" class="practice-instruction"></p>
+                        
+                        <div class="code-editor-container">
+                            <textarea 
+                                id="codeEditor" 
+                                class="code-editor"
+                                placeholder="// Write your code here..."
+                                spellcheck="false"
+                            ></textarea>
+                        </div>
+
+                        <!-- Validation Feedback -->
+                        <div id="validationFeedback" class="validation-feedback hidden"></div>
+
+                        <!-- Hint Display -->
+                        <div id="hintDisplay" class="hint-display hidden"></div>
+
+                        <!-- Practice Actions -->
+                        <div class="practice-actions">
+                            <button id="checkCodeBtn" class="btn-primary">✓ Check My Code</button>
+                            <button id="showHintBtn" class="btn-secondary">💡 Show Hint</button>
+                            <button id="showSolutionBtn" class="btn-secondary">🔍 See Solution</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Navigation -->
+                <div class="step-navigation">
+                    <button id="prevStepBtn" class="nav-btn" disabled>← Previous Step</button>
+                    <button id="nextStepBtn" class="nav-btn">Continue →</button>
+                </div>
+            </div>
+
+            <!-- Error State -->
+            <div id="error" class="error hidden">
+                <div class="error-icon">⚠️</div>
+                <p id="errorMessage"></p>
+                <button id="retryBtn" class="secondary-btn">Try Again</button>
+            </div>
+        </main>
+
+        <footer>
+  <p>© 2026 INPACT Learning. All rights reserved.</p>
+</footer>
+
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
