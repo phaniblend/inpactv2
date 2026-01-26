@@ -3,60 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>INPACT Learning</title>
+    <title>INPACT | Code Better, Interview Smarter</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a2332' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='%2300ff88'>◆</text></svg>">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header id="mainHeader">
-            <h1>🎯 Coding Interview Prep</h1>
-            <p class="subtitle">Master coding interviews with structured tutorials</p>
+            <div class="logo-mark">◆</div>
+            <h1>INPACT</h1>
+            <p class="subtitle">Learn by doing. Remember by understanding.</p>
         </header>
 
         <main>
             <!-- ===================================================================== -->
-            <!-- SCREEN 1: Input Form + Question Bank -->
+            <!-- HERO SECTION: Custom Input -->
             <!-- ===================================================================== -->
             <form id="objectivesForm">
                 <div class="form-group">
                     <label for="task">
-                        What do you want to learn?
-                        <span class="hint">e.g., "implement twoSum", "build a todo app"</span>
+                        What's your next challenge?
+                        <span class="hint">twoSum, binary search, debounce... you name it</span>
                     </label>
                     <input 
                         type="text" 
                         id="task" 
                         name="task" 
-                        placeholder="Enter a coding task..."
+                        placeholder="e.g., implement a throttle function"
                         required
                     >
                 </div>
 
                 <div class="form-group">
                     <label for="technology">
-                        Using which technology?
-                        <span class="hint">e.g., "JavaScript", "React", "TypeScript"</span>
+                        Pick your weapon
+                        <span class="hint">JavaScript, React, TypeScript, Node.js</span>
                     </label>
                     <input 
                         type="text" 
                         id="technology" 
                         name="technology" 
-                        placeholder="Enter the technology..."
+                        placeholder="e.g., JavaScript"
                         required
                     >
                 </div>
 
                 <button type="submit" id="generateBtn">
-                    Generate Learning Path
+                    Build My Learning Path
                 </button>
             </form>
 
-            <!-- Question Bank Section -->
+            <!-- ===================================================================== -->
+            <!-- QUESTION BANK: Curated Challenges -->
+            <!-- ===================================================================== -->
             <section id="questionBankSection" class="question-bank-section">
                 <div class="qb-header">
-                    <h2>📚 Or choose from 100+ Interview Questions</h2>
-                    <p>Curated from real frontend & fullstack interviews</p>
+                    <p class="qb-eyebrow">— or dive straight in —</p>
+                    <h2>100+ Practice Challenges</h2>
+                    <p class="qb-subhead">Classic problems every frontend developer should know.<br>Organized by topic. Built for real understanding.</p>
                 </div>
                 <div id="questionBankContainer" class="question-bank-container"></div>
             </section>
@@ -64,44 +69,37 @@
             <!-- Loading State -->
             <div id="loading" class="loading hidden">
                 <div class="spinner"></div>
-                <p>Analyzing learning objectives...</p>
+                <p>Crafting your personalized learning path...</p>
             </div>
 
             <!-- ===================================================================== -->
-            <!-- SCREEN 2: Learning Objectives Results -->
+            <!-- RESULTS: Learning Objectives -->
             <!-- ===================================================================== -->
             <div id="results" class="results hidden">
                 <div class="results-header">
-                    <h2>📚 Your Learning Path</h2>
-                    <div class="task-info">
-                        <div class="info-row">
-                            <span class="info-label">Task:</span>
-                            <span id="resultTask" class="info-value"></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Technology:</span>
-                            <span id="resultTech" class="info-value"></span>
-                        </div>
-                    </div>
+                    <p class="results-eyebrow">Your challenge</p>
+                    <h2 id="resultTask">—</h2>
+                    <p class="results-tech" id="resultTech">—</p>
                 </div>
                 
                 <div class="objectives-section">
-                    <h3 class="section-title">Skills You'll Learn</h3>
+                    <h3 class="section-title">What you'll actually learn</h3>
+                    <p class="section-subtitle">Not just "how to solve it" — real skills you'll use again and again.</p>
                     <div id="objectives" class="objectives-content"></div>
                 </div>
 
                 <div class="next-step-section">
                     <div class="next-step-header">
-                        <h3>Ready to start?</h3>
-                        <p>Get step-by-step tutorials with practice exercises</p>
+                        <h3>Ready to build muscle memory?</h3>
+                        <p>We'll break this down into bite-sized steps with hands-on practice.</p>
                     </div>
 
                     <button id="startBuildingBtn" class="start-building-btn">
-                        Start Learning
+                        Let's Go
                     </button>
                     
                     <button id="newSearchBtn" class="secondary-btn">
-                        Choose Different Topic
+                        ← Pick a different challenge
                     </button>
                 </div>
             </div>
@@ -109,21 +107,22 @@
             <!-- Task Breakdown Loading -->
             <div id="breakdownLoading" class="loading hidden">
                 <div class="spinner"></div>
-                <p>Creating your learning roadmap...</p>
+                <p>Breaking this down into learnable chunks...</p>
             </div>
 
             <!-- ===================================================================== -->
-            <!-- SCREEN 3: Task Breakdown -->
+            <!-- TASK BREAKDOWN: Learning Roadmap -->
             <!-- ===================================================================== -->
             <div id="breakdownResults" class="breakdown-results hidden">
                 <div class="breakdown-header">
                     <div class="header-content">
-                        <h2>🚀 Your Learning Roadmap</h2>
-                        <p class="breakdown-subtitle">Click any task to start learning</p>
+                        <p class="breakdown-eyebrow">Your roadmap</p>
+                        <h2>One step at a time</h2>
+                        <p class="breakdown-subtitle">Each task builds on the last. No shortcuts, no gaps.</p>
                     </div>
                     <div id="progressBar" class="progress-indicator">
                         <div class="progress-text">
-                            <span id="progressCount">0 of 0</span> tasks completed
+                            <span id="progressCount">0 of 0</span> completed
                         </div>
                         <div class="progress-bar-container">
                             <div id="progressBarFill" class="progress-bar-fill"></div>
@@ -135,10 +134,10 @@
 
                 <div class="action-buttons">
                     <button id="backToObjectives" class="secondary-btn">
-                        ← Back to Learning Objectives
+                        ← Back to overview
                     </button>
                     <button id="startNewBtn" class="secondary-btn">
-                        Choose Different Topic
+                        Try something else
                     </button>
                 </div>
             </div>
@@ -146,15 +145,15 @@
             <!-- Tutorial Loading -->
             <div id="tutorialLoading" class="loading hidden">
                 <div class="spinner"></div>
-                <p>Preparing your tutorial...</p>
+                <p>Building your interactive lesson...</p>
             </div>
 
             <!-- ===================================================================== -->
-            <!-- SCREEN 4: Tutorial View -->
+            <!-- TUTORIAL VIEW: The Learning Experience -->
             <!-- ===================================================================== -->
             <div id="tutorialView" class="tutorial-view hidden">
                 <div class="tutorial-header">
-                    <button id="backToTasks" class="back-btn">← Back to Tasks</button>
+                    <button id="backToTasks" class="back-btn">← Back</button>
                     <div class="tutorial-title">
                         <h2 id="tutorialTaskTitle"></h2>
                     </div>
@@ -172,21 +171,21 @@
                 <div id="stepContent" class="step-content"></div>
 
                 <div class="step-navigation">
-                    <button id="prevStepBtn" class="nav-btn">← Previous Step</button>
-                    <button id="nextStepBtn" class="nav-btn">Next →</button>
+                    <button id="prevStepBtn" class="nav-btn">← Previous</button>
+                    <button id="nextStepBtn" class="nav-btn">Continue →</button>
                 </div>
             </div>
 
             <!-- Error State -->
             <div id="error" class="error hidden">
                 <div class="error-icon">⚠️</div>
-                <p id="errorMessage"></p>
-                <button id="retryBtn" class="secondary-btn">Try Again</button>
+                <p id="errorMessage">Something went wrong</p>
+                <button id="retryBtn" class="secondary-btn">Try again</button>
             </div>
         </main>
 
         <footer>
-            <p>© 2026 INPACT Learning. All rights reserved.</p>
+            <p>INPACT — Where practice meets understanding.</p>
         </footer>
     </div>
 
