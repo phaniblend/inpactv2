@@ -331,6 +331,52 @@ Use \\n for newlines in code strings. Write all code in ${technology}.`
 }
 
 // ============================================================================
+// ASK MENTOR - Contextual Q&A
+// ============================================================================
+
+export async function askMentor(question, screen, tutorial, atomicTask) {
+  try {
+    const client = getAnthropicClient();
+
+    const screenContent = JSON.stringify(screen.content || {});
+    
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 500,
+      messages: [
+        {
+          role: "user",
+          content: `You are a patient coding mentor helping a beginner.
+
+CONTEXT:
+- Task: ${atomicTask}
+- Current screen: ${screen.screenType} - "${screen.title}"
+- Screen content: ${screenContent}
+
+STUDENT'S QUESTION:
+${question}
+
+RULES:
+- Answer in 2-4 sentences max
+- Use simple language, no jargon
+- If they're confused about code, explain with a real-world analogy
+- If asking about syntax, show a tiny example
+- Be encouraging but not condescending
+- Stay focused on the current screen context
+
+Answer:`
+        }
+      ]
+    });
+
+    return message.content[0].text;
+  } catch (error) {
+    console.error('Anthropic API Error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // CODE VALIDATION
 // ============================================================================
 

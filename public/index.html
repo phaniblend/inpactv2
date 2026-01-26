@@ -3,32 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Learning Objectives Generator</title>
+    <title>Coding Interview Prep | INPACT Learning</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header id="mainHeader">
-            <h1>🎯 Learning Objectives Generator</h1>
-            <p class="subtitle">Discover what you'll learn by building real projects</p>
+            <h1>🎯 Coding Interview Prep</h1>
+            <p class="subtitle">Master coding interviews with structured tutorials</p>
         </header>
 
         <main>
             <!-- ===================================================================== -->
-            <!-- SCREEN 1: Input Form -->
+            <!-- SCREEN 1: Input Form + Question Bank -->
             <!-- ===================================================================== -->
             <form id="objectivesForm">
                 <div class="form-group">
                     <label for="task">
-                        What do you want to build?
-                        <span class="hint">e.g., "login form", "todo app", "weather dashboard"</span>
+                        What do you want to learn?
+                        <span class="hint">e.g., "implement twoSum", "build a todo app"</span>
                     </label>
                     <input 
                         type="text" 
                         id="task" 
                         name="task" 
-                        placeholder="Enter your coding task..."
+                        placeholder="Enter a coding task..."
                         required
                     >
                 </div>
@@ -36,21 +36,30 @@
                 <div class="form-group">
                     <label for="technology">
                         Using which technology?
-                        <span class="hint">e.g., "React", "Vue", "vanilla JavaScript"</span>
+                        <span class="hint">e.g., "JavaScript", "React", "TypeScript"</span>
                     </label>
                     <input 
                         type="text" 
                         id="technology" 
                         name="technology" 
-                        placeholder="Enter the technology/framework..."
+                        placeholder="Enter the technology..."
                         required
                     >
                 </div>
 
                 <button type="submit" id="generateBtn">
-                    Start Learning
+                    Generate Learning Path
                 </button>
             </form>
+
+            <!-- Question Bank Section -->
+            <section id="questionBankSection" class="question-bank-section">
+                <div class="qb-header">
+                    <h2>📚 Or choose from 100+ Interview Questions</h2>
+                    <p>Curated from real frontend & fullstack interviews</p>
+                </div>
+                <div id="questionBankContainer" class="question-bank-container"></div>
+            </section>
 
             <!-- Loading State -->
             <div id="loading" class="loading hidden">
@@ -66,7 +75,7 @@
                     <h2>📚 Your Learning Path</h2>
                     <div class="task-info">
                         <div class="info-row">
-                            <span class="info-label">Project:</span>
+                            <span class="info-label">Task:</span>
                             <span id="resultTask" class="info-value"></span>
                         </div>
                         <div class="info-row">
@@ -77,22 +86,22 @@
                 </div>
                 
                 <div class="objectives-section">
-                    <h3 class="section-title">By the end of this task, you will be able to:</h3>
+                    <h3 class="section-title">Skills You'll Learn</h3>
                     <div id="objectives" class="objectives-content"></div>
                 </div>
 
                 <div class="next-step-section">
-                    <!-- <div class="next-step-header">
-                        <h3>Continue</h3>
-                        <p>Get a step-by-step roadmap with interactive tutorials</p>
-                    </div> -->
+                    <div class="next-step-header">
+                        <h3>Ready to start?</h3>
+                        <p>Get step-by-step tutorials with practice exercises</p>
+                    </div>
 
                     <button id="startBuildingBtn" class="start-building-btn">
-                        Continue
+                        Start Learning
                     </button>
                     
                     <button id="newSearchBtn" class="secondary-btn">
-                        Start a Different Project
+                        Choose Different Topic
                     </button>
                 </div>
             </div>
@@ -100,11 +109,11 @@
             <!-- Task Breakdown Loading -->
             <div id="breakdownLoading" class="loading hidden">
                 <div class="spinner"></div>
-                <p>Creating your personalized learning roadmap...</p>
+                <p>Creating your learning roadmap...</p>
             </div>
 
             <!-- ===================================================================== -->
-            <!-- SCREEN 3: Task Breakdown (Clickable Tasks) -->
+            <!-- SCREEN 3: Task Breakdown -->
             <!-- ===================================================================== -->
             <div id="breakdownResults" class="breakdown-results hidden">
                 <div class="breakdown-header">
@@ -129,7 +138,7 @@
                         ← Back to Learning Objectives
                     </button>
                     <button id="startNewBtn" class="secondary-btn">
-                        Start a Different Project
+                        Choose Different Topic
                     </button>
                 </div>
             </div>
@@ -137,14 +146,13 @@
             <!-- Tutorial Loading -->
             <div id="tutorialLoading" class="loading hidden">
                 <div class="spinner"></div>
-                <p>Preparing your interactive tutorial...</p>
+                <p>Preparing your tutorial...</p>
             </div>
 
             <!-- ===================================================================== -->
-            <!-- SCREEN 4: Tutorial View (NEW - Phase 3) -->
+            <!-- SCREEN 4: Tutorial View -->
             <!-- ===================================================================== -->
             <div id="tutorialView" class="tutorial-view hidden">
-                <!-- Tutorial Header -->
                 <div class="tutorial-header">
                     <button id="backToTasks" class="back-btn">← Back to Tasks</button>
                     <div class="tutorial-title">
@@ -152,74 +160,20 @@
                     </div>
                 </div>
 
-                <!-- Step Progress -->
                 <div class="step-progress">
                     <div class="step-progress-text">
-                        Step <span id="currentStepNum">1</span> of <span id="totalSteps">1</span>
+                        Step <span id="currentStepNum">1</span> of <span id="totalSteps">10</span>
                     </div>
                     <div class="step-progress-bar">
                         <div id="stepProgressFill" class="step-progress-fill"></div>
                     </div>
                 </div>
 
-                <!-- Step Content -->
-                <div id="stepContent" class="step-content">
-                    <!-- Goal Section -->
-                    <div class="step-section goal-section">
-                        <h3 class="step-section-title">🎯 Goal</h3>
-                        <div id="stepGoal" class="step-section-content"></div>
-                    </div>
+                <div id="stepContent" class="step-content"></div>
 
-                    <!-- Concept Section -->
-                    <div class="step-section concept-section">
-                        <h3 class="step-section-title">💡 Concept</h3>
-                        <div id="stepConcept" class="step-section-content"></div>
-                    </div>
-
-                    <!-- Example Section -->
-                    <div class="step-section example-section">
-                        <h3 class="step-section-title">📚 Example</h3>
-                        <p id="exampleDescription" class="example-description"></p>
-                        <div class="code-container">
-                            <pre><code id="exampleCode" class="code-block"></code></pre>
-                            <button class="copy-code-btn" id="copyExampleBtn">📋 Copy Example</button>
-                        </div>
-                        <div id="codeAnnotations" class="code-annotations"></div>
-                    </div>
-
-                    <!-- Practice Section -->
-                    <div class="step-section practice-section">
-                        <h3 class="step-section-title">✍️ Now You Try!</h3>
-                        <p id="practiceInstruction" class="practice-instruction"></p>
-                        
-                        <div class="code-editor-container">
-                            <textarea 
-                                id="codeEditor" 
-                                class="code-editor"
-                                placeholder="// Write your code here..."
-                                spellcheck="false"
-                            ></textarea>
-                        </div>
-
-                        <!-- Validation Feedback -->
-                        <div id="validationFeedback" class="validation-feedback hidden"></div>
-
-                        <!-- Hint Display -->
-                        <div id="hintDisplay" class="hint-display hidden"></div>
-
-                        <!-- Practice Actions -->
-                        <div class="practice-actions">
-                            <button id="checkCodeBtn" class="btn-primary">✓ Check My Code</button>
-                            <button id="showHintBtn" class="btn-secondary">💡 Show Hint</button>
-                            <button id="showSolutionBtn" class="btn-secondary">🔍 See Solution</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step Navigation -->
                 <div class="step-navigation">
-                    <button id="prevStepBtn" class="nav-btn" disabled>← Previous Step</button>
-                    <button id="nextStepBtn" class="nav-btn">Continue →</button>
+                    <button id="prevStepBtn" class="nav-btn">← Previous Step</button>
+                    <button id="nextStepBtn" class="nav-btn">Next →</button>
                 </div>
             </div>
 
@@ -232,9 +186,8 @@
         </main>
 
         <footer>
-  <p>© 2026 INPACT Learning. All rights reserved.</p>
-</footer>
-
+            <p>© 2026 INPACT Learning. All rights reserved.</p>
+        </footer>
     </div>
 
     <script src="js/app.js"></script>
