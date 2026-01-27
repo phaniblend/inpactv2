@@ -710,30 +710,6 @@ function displaySetupTask(taskText) {
     tutorialView.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-    
-    const checkboxes = stepContent.querySelectorAll('.setup-checkbox');
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', () => {
-            const allChecked = Array.from(checkboxes).every(c => c.checked);
-            nextStepBtn.disabled = !allChecked;
-            if (allChecked && !completedTasks.includes(taskText)) {
-                completedTasks.push(taskText);
-            }
-        });
-    });
-    
-    prevStepBtn.style.display = 'none';
-    nextStepBtn.disabled = true;
-    nextStepBtn.textContent = 'Complete all steps →';
-    nextStepBtn.onclick = () => showTaskBreakdown();
-    
-    document.querySelector('.step-navigation').style.display = 'flex';
-    document.querySelector('.step-progress').style.display = 'block';
-    
-    breakdownResults.classList.add('hidden');
-    tutorialView.classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
 
 // ============================================================================
 // TUTORIAL DISPLAY - 10 SCREEN SPINE
