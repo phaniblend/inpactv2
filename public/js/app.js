@@ -614,14 +614,15 @@ function displaySetupTask(taskText) {
                 <p class="screen-goal"><strong>Goal:</strong> ${setupInfo.goal}</p>
                 <p class="screen-why"><strong>Why:</strong> ${setupInfo.why}</p>
                 
+                <div class="setup-intro">
+                    <strong>Before you start coding, you'll need to set up your environment.</strong><br>
+                    Complete each step below and check it off when done.
+                </div>
+                
                 <div class="setup-video-link">
                     <a href="${setupInfo.youtubeLink}" target="_blank" rel="noopener noreferrer">
                         ▶ Watch setup tutorials on YouTube
                     </a>
-                </div>
-                
-                <div class="setup-intro">
-                    <strong>👇 Complete each step below, then check it off when done.</strong>
                 </div>
                 
                 <div class="setup-checklist">
