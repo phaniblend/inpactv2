@@ -154,6 +154,7 @@ const taskInput = document.getElementById('task');
 const technologyInput = document.getElementById('technology');
 const generateBtn = document.getElementById('generateBtn');
 const mainHeader = document.getElementById('mainHeader');
+const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
 
 const loadingDiv = document.getElementById('loading');
 const breakdownLoading = document.getElementById('breakdownLoading');
@@ -186,6 +187,39 @@ const errorMessage = document.getElementById('errorMessage');
 // Question Bank Elements
 const questionBankSection = document.getElementById('questionBankSection');
 const questionBankContainer = document.getElementById('questionBankContainer');
+
+// ============================================================================
+// LOADING OVERLAY UTILITIES
+// ============================================================================
+
+let loadingTimeout = null;
+
+function showGlobalLoading() {
+    // Clear any existing timeout
+    if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+    }
+    
+    // Show loading after 1ms delay
+    loadingTimeout = setTimeout(() => {
+        if (globalLoadingOverlay) {
+            globalLoadingOverlay.classList.remove('hidden');
+        }
+    }, 1);
+}
+
+function hideGlobalLoading() {
+    // Clear timeout if loading hasn't shown yet
+    if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
+    }
+    
+    // Hide loading overlay
+    if (globalLoadingOverlay) {
+        globalLoadingOverlay.classList.add('hidden');
+    }
+}
 
 // ============================================================================
 // STATE MANAGEMENT
@@ -268,6 +302,7 @@ function selectQuestion(tech, questionId) {
 async function generateObjectivesForQuestion(question, technology) {
     hideAll();
     loadingDiv.classList.remove('hidden');
+    showGlobalLoading();
     
     try {
         const response = await fetch('/api/generate-objectives', {
@@ -285,6 +320,7 @@ async function generateObjectivesForQuestion(question, technology) {
         displayError(error.message);
     } finally {
         loadingDiv.classList.add('hidden');
+        hideGlobalLoading();
     }
 }
 
@@ -354,6 +390,7 @@ async function handleSubmit(e) {
     hideAll();
     loadingDiv.classList.remove('hidden');
     generateBtn.disabled = true;
+    showGlobalLoading();
     
     try {
         const response = await fetch('/api/generate-objectives', {
@@ -372,6 +409,7 @@ async function handleSubmit(e) {
     } finally {
         loadingDiv.classList.add('hidden');
         generateBtn.disabled = false;
+        hideGlobalLoading();
     }
 }
 
@@ -395,6 +433,7 @@ async function handleStartBuilding() {
     resultsDiv.classList.add('hidden');
     breakdownLoading.classList.remove('hidden');
     startBuildingBtn.disabled = true;
+    showGlobalLoading();
     
     try {
         const response = await fetch('/api/decompose-task', {
@@ -418,6 +457,7 @@ async function handleStartBuilding() {
     } finally {
         breakdownLoading.classList.add('hidden');
         startBuildingBtn.disabled = false;
+        hideGlobalLoading();
     }
 }
 
@@ -509,12 +549,18 @@ async function handleTaskClick(taskText) {
     currentAtomicTask = taskText;
     
     if (isSetupTask(taskText)) {
-        displaySetupTask(taskText);
+        showGlobalLoading();
+        // Small delay to show loading for setup tasks too
+        setTimeout(() => {
+            displaySetupTask(taskText);
+            hideGlobalLoading();
+        }, 10);
         return;
     }
     
     breakdownResults.classList.add('hidden');
     tutorialLoading.classList.remove('hidden');
+    showGlobalLoading();
     
     try {
         const response = await fetch('/api/generate-tutorial', {
@@ -541,6 +587,7 @@ async function handleTaskClick(taskText) {
         breakdownResults.classList.remove('hidden');
     } finally {
         tutorialLoading.classList.add('hidden');
+        hideGlobalLoading();
     }
 }
 
@@ -979,19 +1026,28 @@ function navigateScreen(direction) {
     
     if (newIndex < 0) return;
     
+    showGlobalLoading();
+    
     if (newIndex >= screens.length) {
         if (!completedTasks.includes(currentAtomicTask)) {
             completedTasks.push(currentAtomicTask);
         }
-        showTaskBreakdown();
+        setTimeout(() => {
+            showTaskBreakdown();
+            hideGlobalLoading();
+        }, 10);
         return;
     }
     
     currentScreenIndex = newIndex;
-    renderScreen(currentScreenIndex);
+    setTimeout(() => {
+        renderScreen(currentScreenIndex);
+        hideGlobalLoading();
+    }, 10);
 }
 
 function showTaskBreakdown() {
+    showGlobalLoading();
     tutorialView.classList.add('hidden');
     mainHeader.classList.add('hidden');
     form.classList.add('hidden');
@@ -1000,6 +1056,7 @@ function showTaskBreakdown() {
     
     refreshTaskList();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => hideGlobalLoading(), 50);
 }
 
 function refreshTaskList() {
@@ -1022,6 +1079,7 @@ function refreshTaskList() {
 }
 
 function showObjectives() {
+    showGlobalLoading();
     breakdownResults.classList.add('hidden');
     tutorialView.classList.add('hidden');
     mainHeader.classList.add('hidden');
@@ -1029,6 +1087,7 @@ function showObjectives() {
     if (questionBankSection) questionBankSection.classList.add('hidden');
     resultsDiv.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => hideGlobalLoading(), 50);
 }
 
 // ============================================================================
@@ -1052,6 +1111,7 @@ async function askMentor(screen) {
     askBtn.textContent = 'Thinking...';
     responseDiv.innerHTML = '<p class="mentor-loading">Your mentor is thinking...</p>';
     responseDiv.classList.remove('hidden');
+    showGlobalLoading();
     
     try {
         const response = await fetch('/api/ask-mentor', {
@@ -1082,6 +1142,7 @@ async function askMentor(screen) {
     } finally {
         askBtn.disabled = false;
         askBtn.textContent = 'Ask Mentor';
+        hideGlobalLoading();
     }
 }
 
@@ -1107,6 +1168,8 @@ async function validateCode() {
         checkBtn.disabled = true;
         checkBtn.textContent = 'Checking...';
     }
+    
+    showGlobalLoading();
     
     try {
         const response = await fetch('/api/validate-code', {
@@ -1136,6 +1199,7 @@ async function validateCode() {
             checkBtn.disabled = false;
             checkBtn.textContent = 'Check Code';
         }
+        hideGlobalLoading();
     }
 }
 
@@ -1183,6 +1247,8 @@ async function requestHint() {
         hintBtn.textContent = 'Thinking...';
     }
     
+    showGlobalLoading();
+    
     try {
         const response = await fetch('/api/generate-hint', {
             method: 'POST',
@@ -1208,6 +1274,7 @@ async function requestHint() {
             hintBtn.disabled = false;
             hintBtn.textContent = hintCount >= 3 ? 'No more hints' : `Hint (${hintCount}/3)`;
         }
+        hideGlobalLoading();
     }
 }
 
@@ -1284,6 +1351,7 @@ function displayError(message) {
 }
 
 function resetToStart() {
+    showGlobalLoading();
     hideAll();
     mainHeader.classList.remove('hidden');
     form.classList.remove('hidden');
@@ -1299,6 +1367,7 @@ function resetToStart() {
     completedTasks = [];
     taskInput.focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => hideGlobalLoading(), 50);
 }
 
 function hideAll() {
