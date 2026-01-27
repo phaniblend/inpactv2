@@ -1418,11 +1418,6 @@ function hideAll() {
 // ONLINE EDITOR FUNCTIONALITY
 // ============================================================================
 
-let studentCodeByTask = {}; // Store student's code submissions by task
-let allTasks = []; // Store all tasks from the breakdown
-let monacoEditor = null; // Monaco editor instance
-let currentEditorTaskIndex = 0; // Current task being worked on in editor
-
 async function openOnlineEditor(taskText) {
     // Hide tutorial view, show editor view
     tutorialView.classList.add('hidden');
