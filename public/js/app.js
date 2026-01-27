@@ -156,9 +156,6 @@ const generateBtn = document.getElementById('generateBtn');
 const mainHeader = document.getElementById('mainHeader');
 const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
 
-const loadingDiv = document.getElementById('loading');
-const breakdownLoading = document.getElementById('breakdownLoading');
-const tutorialLoading = document.getElementById('tutorialLoading');
 
 const resultsDiv = document.getElementById('results');
 const objectivesList = document.getElementById('objectives');
@@ -301,7 +298,6 @@ function selectQuestion(tech, questionId) {
 
 async function generateObjectivesForQuestion(question, technology) {
     hideAll();
-    loadingDiv.classList.remove('hidden');
     showGlobalLoading();
     
     try {
@@ -319,7 +315,6 @@ async function generateObjectivesForQuestion(question, technology) {
     } catch (error) {
         displayError(error.message);
     } finally {
-        loadingDiv.classList.add('hidden');
         hideGlobalLoading();
     }
 }
@@ -433,7 +428,6 @@ async function handleSubmit(e) {
     window.history.pushState({}, '', url);
     
     hideAll();
-    loadingDiv.classList.remove('hidden');
     generateBtn.disabled = true;
     showGlobalLoading();
     
@@ -452,7 +446,6 @@ async function handleSubmit(e) {
     } catch (error) {
         displayError(error.message);
     } finally {
-        loadingDiv.classList.add('hidden');
         generateBtn.disabled = false;
         hideGlobalLoading();
     }
@@ -476,7 +469,6 @@ function displayObjectives(data) {
 
 async function handleStartBuilding() {
     resultsDiv.classList.add('hidden');
-    breakdownLoading.classList.remove('hidden');
     startBuildingBtn.disabled = true;
     showGlobalLoading();
     
@@ -500,7 +492,6 @@ async function handleStartBuilding() {
         displayError(error.message);
         resultsDiv.classList.remove('hidden');
     } finally {
-        breakdownLoading.classList.add('hidden');
         startBuildingBtn.disabled = false;
         hideGlobalLoading();
     }
@@ -604,7 +595,6 @@ async function handleTaskClick(taskText) {
     }
     
     breakdownResults.classList.add('hidden');
-    tutorialLoading.classList.remove('hidden');
     showGlobalLoading();
     
     try {
@@ -631,7 +621,6 @@ async function handleTaskClick(taskText) {
         displayError(error.message);
         breakdownResults.classList.remove('hidden');
     } finally {
-        tutorialLoading.classList.add('hidden');
         hideGlobalLoading();
     }
 }
@@ -1397,7 +1386,4 @@ function hideAll() {
     errorDiv.classList.add('hidden');
     breakdownResults.classList.add('hidden');
     tutorialView.classList.add('hidden');
-    loadingDiv.classList.add('hidden');
-    breakdownLoading.classList.add('hidden');
-    tutorialLoading.classList.add('hidden');
 }
