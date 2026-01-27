@@ -1437,3 +1437,36 @@ footer {
         gap: 16px;
     }
 }
+/* Setup Screen */
+.setup-intro {
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid var(--neon-blue);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.setup-video-link {
+    margin-bottom: 24px;
+}
+
+.setup-video-link a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: #ff0000;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.setup-video-link a:hover {
+    background: #cc0000;
+    transform: translateY(-2px);
+}
