@@ -6,6 +6,8 @@
     <title>INPACT | Code Better, Interview Smarter</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a2332' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='%2300ff88'>◆</text></svg>">
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 </head>
 <body>
     <div class="container">
@@ -136,6 +138,86 @@
                 </div>
             </div>
 
+
+            <!-- ===================================================================== -->
+            <!-- ONLINE EDITOR VIEW: Split-screen with Tutorial and Editor -->
+            <!-- ===================================================================== -->
+            <div id="onlineEditorView" class="online-editor-view hidden">
+                <div class="editor-layout">
+                    <!-- Left Pane: Tutorial -->
+                    <div class="editor-tutorial-pane">
+                        <div class="editor-tutorial-header">
+                            <button id="backFromEditorBtn" class="back-btn">← Back</button>
+                            <h2 id="editorTutorialTitle"></h2>
+                        </div>
+                        <div id="editorTutorialContent" class="editor-tutorial-content"></div>
+                        <div class="editor-tutorial-navigation">
+                            <button id="editorPrevBtn" class="nav-btn">← Previous</button>
+                            <button id="editorNextBtn" class="nav-btn">Continue →</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Pane: Editor -->
+                    <div class="editor-code-pane">
+                        <div class="editor-code-header">
+                            <div class="editor-code-title">
+                                <h3 id="editorCodeTitle"></h3>
+                                <span id="editorLanguage" class="editor-language"></span>
+                            </div>
+                            <div id="editorProgressIndicator" class="editor-progress-indicator"></div>
+                        </div>
+                        <div id="monacoEditor" class="monaco-editor-container"></div>
+                        <div class="editor-actions">
+                            <button id="runCodeBtn" class="run-code-btn">► Run Code</button>
+                            <button id="checkCodeEditorBtn" class="check-code-btn">Check Code</button>
+                        </div>
+                        <div id="editorOutput" class="editor-output">
+                            <div class="editor-output-header">Output</div>
+                            <div id="editorOutputContent" class="editor-output-content">Click "Run Code" to see output...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================================================================== -->
+            <!-- ONLINE EDITOR VIEW: Split-screen with Tutorial and Editor -->
+            <!-- ===================================================================== -->
+            <div id="onlineEditorView" class="online-editor-view hidden">
+                <div class="editor-layout">
+                    <!-- Left Pane: Tutorial -->
+                    <div class="editor-tutorial-pane">
+                        <div class="editor-tutorial-header">
+                            <button id="backFromEditorBtn" class="back-btn">← Back</button>
+                            <h2 id="editorTutorialTitle"></h2>
+                        </div>
+                        <div id="editorTutorialContent" class="editor-tutorial-content"></div>
+                        <div class="editor-tutorial-navigation">
+                            <button id="editorPrevBtn" class="nav-btn">← Previous</button>
+                            <button id="editorNextBtn" class="nav-btn">Continue →</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Pane: Editor -->
+                    <div class="editor-code-pane">
+                        <div class="editor-code-header">
+                            <div class="editor-code-title">
+                                <h3 id="editorCodeTitle"></h3>
+                                <span id="editorLanguage" class="editor-language"></span>
+                            </div>
+                            <div id="editorProgressIndicator" class="editor-progress-indicator"></div>
+                        </div>
+                        <div id="monacoEditor" class="monaco-editor-container"></div>
+                        <div class="editor-actions">
+                            <button id="runCodeBtn" class="run-code-btn">► Run Code</button>
+                            <button id="checkCodeEditorBtn" class="check-code-btn">Check Code</button>
+                        </div>
+                        <div id="editorOutput" class="editor-output">
+                            <div class="editor-output-header">Output</div>
+                            <div id="editorOutputContent" class="editor-output-content">Click "Run Code" to see output...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- ===================================================================== -->
             <!-- TUTORIAL VIEW: The Learning Experience -->

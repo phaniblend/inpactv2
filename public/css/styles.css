@@ -1516,3 +1516,233 @@ footer {
     background: #cc0000;
     transform: translateY(-2px);
 }
+
+.setup-editor-option {
+    margin: 24px 0;
+    text-align: center;
+}
+
+.online-editor-btn {
+    padding: 14px 28px;
+    background: var(--neon);
+    color: var(--navy-dark);
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.online-editor-btn:hover {
+    background: #00e67a;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+}
+
+/* ============================================================================
+   ONLINE EDITOR VIEW - Split Screen
+   ============================================================================ */
+
+.online-editor-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: var(--bg);
+    z-index: 10000;
+    overflow: hidden;
+}
+
+.editor-layout {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+
+.editor-tutorial-pane {
+    width: 50%;
+    background: #eef1f5;
+    overflow-y: auto;
+    padding: 40px;
+    border-right: 1px solid rgba(30, 42, 58, 0.1);
+}
+
+.editor-code-pane {
+    width: 50%;
+    background: var(--navy-dark);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.editor-tutorial-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(30, 42, 58, 0.1);
+}
+
+.editor-tutorial-header h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.editor-tutorial-content {
+    min-height: 400px;
+    margin-bottom: 32px;
+}
+
+.editor-tutorial-navigation {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 32px;
+    border-top: 1px solid rgba(30, 42, 58, 0.1);
+}
+
+.editor-code-header {
+    padding: 20px 24px;
+    background: var(--navy);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.editor-code-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.editor-code-title h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--white);
+    margin: 0;
+}
+
+.editor-language {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.editor-progress-indicator {
+    max-width: 300px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.editor-progress-task {
+    padding: 6px 10px;
+    margin: 4px 0;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid transparent;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.editor-progress-task.current {
+    background: rgba(0, 255, 136, 0.15);
+    border-left-color: var(--neon);
+    color: var(--neon);
+}
+
+.editor-progress-task.completed {
+    opacity: 0.6;
+}
+
+.monaco-editor-container {
+    flex: 1;
+    min-height: 0;
+}
+
+.editor-actions {
+    padding: 16px 24px;
+    background: var(--navy);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    gap: 12px;
+}
+
+.run-code-btn {
+    padding: 12px 24px;
+    background: var(--neon);
+    color: var(--navy-dark);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.run-code-btn:hover {
+    background: #00e67a;
+    transform: translateY(-2px);
+}
+
+.check-code-btn {
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.check-code-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.editor-output {
+    background: var(--navy);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-output-header {
+    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.editor-output-content {
+    padding: 16px 24px;
+    color: #e2e8f0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 1024px) {
+    .editor-layout {
+        flex-direction: column;
+    }
+    
+    .editor-tutorial-pane,
+    .editor-code-pane {
+        width: 100%;
+        height: 50vh;
+    }
+}

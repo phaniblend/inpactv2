@@ -230,6 +230,10 @@ let currentScreenIndex = 0;
 let hintCount = 0;
 let previousHints = [];
 let completedTasks = [];
+let studentCodeByTask = {}; // Store student's code submissions by task
+let allTasks = []; // Store all tasks from the breakdown
+let monacoEditor = null; // Monaco editor instance
+let currentEditorTaskIndex = 0; // Current task being worked on in editor
 
 // ============================================================================
 // INITIALIZE QUESTION BANK
@@ -499,6 +503,7 @@ async function handleStartBuilding() {
 
 function displayTaskBreakdown(tasks) {
     tasksList.innerHTML = '';
+    allTasks = tasks; // Store tasks for editor view
     
     const section = createTaskSection('Your Learning Roadmap', '🚀', tasks);
     tasksList.appendChild(section);
@@ -666,6 +671,12 @@ function displaySetupTask(taskText) {
                     </a>
                 </div>
                 
+                <div class="setup-editor-option">
+                    <button id="useOnlineEditorBtn" class="online-editor-btn">
+                        💻 I wanna use online editor
+                    </button>
+                </div>
+                
                 <div class="setup-checklist">
                     ${setupInfo.instructions.map((inst, i) => `
                         <div class="setup-instruction">
@@ -698,6 +709,12 @@ function displaySetupTask(taskText) {
     nextStepBtn.disabled = true;
     nextStepBtn.textContent = 'Complete all steps →';
     nextStepBtn.onclick = () => showTaskBreakdown();
+    
+    // Add event listener for online editor button
+    const useOnlineEditorBtn = document.getElementById('useOnlineEditorBtn');
+    if (useOnlineEditorBtn) {
+        useOnlineEditorBtn.onclick = () => openOnlineEditor(taskText);
+    }
     
     document.querySelector('.step-navigation').style.display = 'flex';
     document.querySelector('.step-progress').style.display = 'block';
@@ -1393,4 +1410,301 @@ function hideAll() {
     errorDiv.classList.add('hidden');
     breakdownResults.classList.add('hidden');
     tutorialView.classList.add('hidden');
+    const onlineEditorView = document.getElementById('onlineEditorView');
+    if (onlineEditorView) onlineEditorView.classList.add('hidden');
 }
+
+// ============================================================================
+// ONLINE EDITOR FUNCTIONALITY
+// ============================================================================
+
+let studentCodeByTask = {}; // Store student's code submissions by task
+let allTasks = []; // Store all tasks from the breakdown
+let monacoEditor = null; // Monaco editor instance
+let currentEditorTaskIndex = 0; // Current task being worked on in editor
+
+async function openOnlineEditor(taskText) {
+    // Hide tutorial view, show editor view
+    tutorialView.classList.add('hidden');
+    const onlineEditorView = document.getElementById('onlineEditorView');
+    if (!onlineEditorView) return;
+    
+    onlineEditorView.classList.remove('hidden');
+    
+    // Find the current task index
+    currentEditorTaskIndex = allTasks.findIndex(t => t === taskText);
+    if (currentEditorTaskIndex === -1) currentEditorTaskIndex = 0;
+    
+    // Initialize Monaco editor if not already done
+    if (!monacoEditor) {
+        await initializeMonacoEditor();
+    }
+    
+    // Load tutorial for this task if not already loaded
+    if (!currentTutorial || currentAtomicTask !== taskText) {
+        showGlobalLoading();
+        try {
+            const response = await fetch('/api/generate-tutorial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    atomicTask: taskText,
+                    projectContext: { task: currentTask, technology: currentTechnology }
+                })
+            });
+            
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to generate tutorial');
+            
+            currentTutorial = data.tutorial;
+            currentAtomicTask = taskText;
+            currentScreenIndex = 0;
+        } catch (error) {
+            displayError(error.message);
+            hideGlobalLoading();
+            return;
+        } finally {
+            hideGlobalLoading();
+        }
+    }
+    
+    // Update editor view
+    updateEditorView();
+    updateEditorProgressIndicator();
+    updateEditorCode();
+}
+
+async function initializeMonacoEditor() {
+    return new Promise((resolve, reject) => {
+        if (typeof monaco !== 'undefined' && monaco.editor) {
+            // Monaco already loaded
+            createEditorInstance(resolve, reject);
+        } else if (typeof require !== 'undefined') {
+            // Use require.js
+            require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], () => {
+                createEditorInstance(resolve, reject);
+            });
+        } else {
+            // Wait a bit for script to load
+            setTimeout(() => {
+                if (typeof monaco !== 'undefined' && monaco.editor) {
+                    createEditorInstance(resolve, reject);
+                } else {
+                    reject(new Error('Monaco editor failed to load'));
+                }
+            }, 1000);
+        }
+    });
+}
+
+function createEditorInstance(resolve, reject) {
+    const editorContainer = document.getElementById('monacoEditor');
+    if (!editorContainer) {
+        reject(new Error('Editor container not found'));
+        return;
+    }
+    
+    const language = currentTechnology === 'JavaScript' || currentTechnology === 'JS' ? 'javascript' :
+                   currentTechnology === 'TypeScript' || currentTechnology === 'TS' ? 'typescript' :
+                   currentTechnology === 'Python' ? 'python' : 'javascript';
+    
+    monacoEditor = monaco.editor.create(editorContainer, {
+        value: getCodeForCurrentTask(),
+        language: language,
+        theme: 'vs-dark',
+        fontSize: 14,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        automaticLayout: true
+    });
+    
+    resolve();
+}
+
+function updateEditorView() {
+    const editorTutorialTitle = document.getElementById('editorTutorialTitle');
+    const editorTutorialContent = document.getElementById('editorTutorialContent');
+    const editorCodeTitle = document.getElementById('editorCodeTitle');
+    const editorLanguage = document.getElementById('editorLanguage');
+    
+    if (editorTutorialTitle) {
+        editorTutorialTitle.textContent = currentAtomicTask || 'Tutorial';
+    }
+    
+    if (editorCodeTitle) {
+        editorCodeTitle.textContent = currentAtomicTask || 'Code Editor';
+    }
+    
+    if (editorLanguage) {
+        editorLanguage.textContent = currentTechnology || 'JavaScript';
+    }
+    
+    // Render current tutorial screen
+    if (currentTutorial && currentTutorial.screens) {
+        const screen = currentTutorial.screens[currentScreenIndex];
+        if (screen && editorTutorialContent) {
+            editorTutorialContent.innerHTML = getScreenHTML(screen);
+        }
+    }
+}
+
+function updateEditorProgressIndicator() {
+    const indicator = document.getElementById('editorProgressIndicator');
+    if (!indicator || !allTasks.length) return;
+    
+    let html = '<div style="font-weight: 600; margin-bottom: 8px; color: rgba(255,255,255,0.9);">🚀 Your Learning Roadmap</div>';
+    
+    allTasks.forEach((task, index) => {
+        const isCurrent = index === currentEditorTaskIndex;
+        const isCompleted = completedTasks.includes(task);
+        const isSetup = isSetupTask(task);
+        
+        let status = '';
+        if (isSetup) {
+            status = 'SETUP';
+        } else if (isCompleted) {
+            status = '✓';
+        } else if (index < currentEditorTaskIndex) {
+            status = '○';
+        }
+        
+        const taskClass = isCurrent ? 'current' : (isCompleted ? 'completed' : '');
+        html += `
+            <div class="editor-progress-task ${taskClass}">
+                <strong>Task ${index + 1}:</strong> ${task} ${status ? `<span style="float: right;">${status}</span>` : ''}
+            </div>
+        `;
+    });
+    
+    indicator.innerHTML = html;
+}
+
+function getCodeForCurrentTask() {
+    const currentTaskText = allTasks[currentEditorTaskIndex];
+    if (!currentTaskText) return '// Start coding here...';
+    
+    // If student has submitted code for this task, use it
+    if (studentCodeByTask[currentTaskText]) {
+        return studentCodeByTask[currentTaskText];
+    }
+    
+    // Otherwise, get the solution code from tutorial
+    if (currentTutorial && currentTutorial.screens) {
+        const solutionScreen = currentTutorial.screens.find(s => s.screenType === 'solution');
+        if (solutionScreen && solutionScreen.content && solutionScreen.content.code) {
+            return solutionScreen.content.code.replace(/\\n/g, '\n');
+        }
+        
+        // If no solution screen, get from implementation screen
+        const implScreen = currentTutorial.screens.find(s => s.screenType === 'implementation');
+        if (implScreen && implScreen.content && implScreen.content.starterCode) {
+            return implScreen.content.starterCode.replace(/\\n/g, '\n');
+        }
+    }
+    
+    return '// Start coding here...';
+}
+
+function updateEditorCode() {
+    if (!monacoEditor) return;
+    
+    const code = getCodeForCurrentTask();
+    monacoEditor.setValue(code);
+}
+
+// Event listeners for editor view
+document.addEventListener('DOMContentLoaded', () => {
+    const backFromEditorBtn = document.getElementById('backFromEditorBtn');
+    const editorPrevBtn = document.getElementById('editorPrevBtn');
+    const editorNextBtn = document.getElementById('editorNextBtn');
+    const runCodeBtn = document.getElementById('runCodeBtn');
+    const checkCodeEditorBtn = document.getElementById('checkCodeEditorBtn');
+    
+    if (backFromEditorBtn) {
+        backFromEditorBtn.addEventListener('click', () => {
+            const onlineEditorView = document.getElementById('onlineEditorView');
+            if (onlineEditorView) onlineEditorView.classList.add('hidden');
+            tutorialView.classList.remove('hidden');
+        });
+    }
+    
+    if (editorPrevBtn) {
+        editorPrevBtn.addEventListener('click', () => {
+            if (currentScreenIndex > 0) {
+                currentScreenIndex--;
+                updateEditorView();
+            }
+        });
+    }
+    
+    if (editorNextBtn) {
+        editorNextBtn.addEventListener('click', () => {
+            if (currentTutorial && currentTutorial.screens) {
+                if (currentScreenIndex < currentTutorial.screens.length - 1) {
+                    currentScreenIndex++;
+                    updateEditorView();
+                }
+            }
+        });
+    }
+    
+    if (runCodeBtn) {
+        runCodeBtn.addEventListener('click', () => {
+            if (monacoEditor) {
+                const code = monacoEditor.getValue();
+                // For now, just show a message (actual code execution would need a backend)
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    output.textContent = 'Code execution requires a backend service. This is a placeholder.';
+                }
+            }
+        });
+    }
+    
+    if (checkCodeEditorBtn) {
+        checkCodeEditorBtn.addEventListener('click', async () => {
+            if (!monacoEditor) return;
+            
+            const code = monacoEditor.getValue();
+            studentCodeByTask[allTasks[currentEditorTaskIndex]] = code;
+            
+            showGlobalLoading();
+            try {
+                const response = await fetch('/api/validate-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userCode: code,
+                        tutorial: currentTutorial,
+                        atomicTask: allTasks[currentEditorTaskIndex]
+                    })
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Validation failed');
+                
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    const validation = data.validation;
+                    if (validation.correct) {
+                        output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job!</span>';
+                        if (!completedTasks.includes(allTasks[currentEditorTaskIndex])) {
+                            completedTasks.push(allTasks[currentEditorTaskIndex]);
+                        }
+                        updateEditorProgressIndicator();
+                    } else {
+                        output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation.feedback?.[0]?.message || 'Not quite right. Keep trying!'}</span>`;
+                    }
+                }
+            } catch (error) {
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    output.textContent = `Error: ${error.message}`;
+                }
+            } finally {
+                hideGlobalLoading();
+            }
+        });
+    }
+});
