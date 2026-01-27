@@ -305,16 +305,22 @@ function isSetupTask(taskText) {
 }
 
 function getSetupInstructions(taskText, technology) {
+    const searchQuery = encodeURIComponent(`${taskText} ${technology} tutorial`);
+    const youtubeLink = `https://www.youtube.com/results?search_query=${searchQuery}`;
+    
     return {
         title: taskText,
-        goal: 'Complete the setup task',
-        why: 'This prepares your development environment',
+        goal: 'Set up a professional development environment',
+        youtubeLink: youtubeLink,
+        why: `Modern ${technology} development relies on external libraries and tools. When you write code, you'll use packages that others have built — things like testing frameworks, build tools, and utility libraries. A proper setup lets you track dependencies, share your project with others, and run scripts for testing and building your code.`,
         instructions: [
-            'Follow the official documentation',
-            'Verify the setup worked',
-            'Troubleshoot any errors'
+            'Open your terminal or command prompt',
+            'Navigate to your project folder (or create one)',
+            'Run the initialization command for your package manager',
+            'Install any required dependencies',
+            'Verify the setup by running a test command'
         ],
-        verification: 'The tool/setup is working as expected'
+        verification: 'You should see the expected config files in your project folder and be able to run basic commands without errors'
     };
 }
 
@@ -554,12 +560,22 @@ function displaySetupTask(taskText) {
     stepContent.innerHTML = `
         <div class="screen-container screen-setup">
             <div class="screen-header">
-                <span class="screen-icon">⚙️</span>
-                <h2>${setupInfo.title}</h2>
+                <span class="screen-number">1</span>
+                <span class="screen-type-label">Environment Setup</span>
             </div>
             <div class="screen-body">
                 <p class="screen-goal"><strong>Goal:</strong> ${setupInfo.goal}</p>
                 <p class="screen-why"><strong>Why:</strong> ${setupInfo.why}</p>
+                
+                <div class="setup-video-link">
+                    <a href="${setupInfo.youtubeLink}" target="_blank" rel="noopener noreferrer">
+                        ▶ Watch setup tutorials on YouTube
+                    </a>
+                </div>
+                
+                <div class="setup-intro">
+                    <strong>👇 Complete each step below, then check it off when done.</strong>
+                </div>
                 
                 <div class="setup-checklist">
                     ${setupInfo.instructions.map((inst, i) => `
@@ -577,6 +593,30 @@ function displaySetupTask(taskText) {
             </div>
         </div>
     `;
+    
+    const checkboxes = stepContent.querySelectorAll('.setup-checkbox');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            const allChecked = Array.from(checkboxes).every(c => c.checked);
+            nextStepBtn.disabled = !allChecked;
+            if (allChecked && !completedTasks.includes(taskText)) {
+                completedTasks.push(taskText);
+            }
+        });
+    });
+    
+    prevStepBtn.style.display = 'none';
+    nextStepBtn.disabled = true;
+    nextStepBtn.textContent = 'Complete all steps →';
+    nextStepBtn.onclick = () => showTaskBreakdown();
+    
+    document.querySelector('.step-navigation').style.display = 'flex';
+    document.querySelector('.step-progress').style.display = 'block';
+    
+    breakdownResults.classList.add('hidden');
+    tutorialView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
     
     const checkboxes = stepContent.querySelectorAll('.setup-checkbox');
     checkboxes.forEach(cb => {
