@@ -645,8 +645,15 @@ function displaySetupTask(taskText) {
                 <span class="screen-type-label">Environment Setup</span>
             </div>
             <div class="screen-body">
-                <p class="screen-goal"><strong>Goal:</strong> ${setupInfo.goal}</p>
-                <p class="screen-why"><strong>Why:</strong> ${setupInfo.why}</p>
+                <div class="setup-goal-section">
+                    <div class="setup-label">Goal</div>
+                    <p class="setup-goal-text">${setupInfo.goal}</p>
+                </div>
+                
+                <div class="setup-why-section">
+                    <div class="setup-label">Why</div>
+                    <p class="setup-why-text">${setupInfo.why}</p>
+                </div>
                 
                 <div class="setup-intro">
                     <strong>Before you start coding, you'll need to set up your environment.</strong><br>

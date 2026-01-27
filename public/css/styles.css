@@ -1442,6 +1442,43 @@ footer {
     }
 }
 /* Setup Screen */
+.setup-goal-section,
+.setup-why-section {
+    margin-bottom: 28px;
+}
+
+.setup-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+}
+
+.setup-goal-text {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.7;
+    color: var(--text);
+    margin: 0;
+    padding: 14px 18px;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #00d4ff;
+}
+
+.setup-why-text {
+    font-size: 0.95rem;
+    font-weight: 300;
+    line-height: 1.8;
+    color: var(--text);
+    margin: 0;
+    padding: 14px 18px;
+    background: rgba(30, 42, 58, 0.05);
+    border-radius: 10px;
+}
+
 .setup-intro {
     margin-bottom: 24px;
     padding: 16px 20px;
