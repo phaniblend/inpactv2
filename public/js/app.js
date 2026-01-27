@@ -665,16 +665,28 @@ function displaySetupTask(taskText) {
                     Complete each step below and check it off when done.
                 </div>
                 
-                <div class="setup-video-link">
-                    <a href="${setupInfo.youtubeLink}" target="_blank" rel="noopener noreferrer">
-                        ▶ Watch setup tutorials on YouTube
-                    </a>
-                </div>
-                
-                <div class="setup-editor-option">
-                    <button id="useOnlineEditorBtn" class="online-editor-btn">
-                        💻 I wanna use online editor
-                    </button>
+                <div class="setup-options">
+                    <div class="setup-option">
+                        <div class="setup-option-icon">📺</div>
+                        <div class="setup-option-content">
+                            <h4>Setup your own environment</h4>
+                            <p>Ok, lemme check the video and setup my own env setup...</p>
+                            <a href="${setupInfo.youtubeLink}" target="_blank" rel="noopener noreferrer" class="setup-option-link">
+                                ▶ Watch setup tutorials on YouTube
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="setup-option">
+                        <div class="setup-option-icon">💻</div>
+                        <div class="setup-option-content">
+                            <h4>Use online editor</h4>
+                            <p>Don't wanna setup the env now? No problem, you can use the online editor with the env setup for you already.</p>
+                            <button id="useOnlineEditorBtn" class="setup-option-btn">
+                                Start coding now →
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="setup-checklist">
@@ -1575,9 +1587,107 @@ function updateEditorProgressIndicator() {
     indicator.innerHTML = html;
 }
 
+function getBoilerplateCode(technology) {
+    const tech = technology || currentTechnology || 'JavaScript';
+    const techLower = tech.toLowerCase();
+    
+    if (techLower.includes('javascript') || techLower === 'js') {
+        return `// Welcome! Your environment is ready to go.
+// Start coding your solution below:
+
+function solution() {
+    // Your code here
+    return null;
+}
+
+// Test your code
+console.log(solution());
+
+// Example: Try running this
+console.log("Hello, World!");`;
+    } else if (techLower.includes('typescript') || techLower === 'ts') {
+        return `// Welcome! Your TypeScript environment is ready.
+// Start coding your solution below:
+
+function solution(): any {
+    // Your code here
+    return null;
+}
+
+// Test your code
+console.log(solution());
+
+// Example: Try running this
+console.log("Hello, World!");`;
+    } else if (techLower.includes('react')) {
+        return `// Welcome! Your React environment is ready.
+// Start coding your component below:
+
+import React from 'react';
+
+function App() {
+    return (
+        <div>
+            <h1>Hello, World!</h1>
+            {/* Your code here */}
+        </div>
+    );
+}
+
+export default App;`;
+    } else if (techLower.includes('node') || techLower.includes('nodejs')) {
+        return `// Welcome! Your Node.js environment is ready.
+// Start coding your solution below:
+
+function solution() {
+    // Your code here
+    return null;
+}
+
+// Test your code
+console.log(solution());
+
+// Example: Try running this
+console.log("Hello, World!");`;
+    } else if (techLower.includes('python')) {
+        return `# Welcome! Your Python environment is ready.
+# Start coding your solution below:
+
+def solution():
+    # Your code here
+    return None
+
+# Test your code
+print(solution())
+
+# Example: Try running this
+print("Hello, World!")`;
+    } else {
+        // Default JavaScript
+        return `// Welcome! Your environment is ready to go.
+// Start coding your solution below:
+
+function solution() {
+    // Your code here
+    return null;
+}
+
+// Test your code
+console.log(solution());`;
+    }
+}
+
 function getCodeForCurrentTask() {
     const currentTaskText = allTasks[currentEditorTaskIndex];
-    if (!currentTaskText) return '// Start coding here...';
+    if (!currentTaskText) {
+        // If no task, return boilerplate
+        return getBoilerplateCode(currentTechnology);
+    }
+    
+    // If it's a setup task, return boilerplate code
+    if (isSetupTask(currentTaskText)) {
+        return getBoilerplateCode(currentTechnology);
+    }
     
     // If student has submitted code for this task, use it
     if (studentCodeByTask[currentTaskText]) {
@@ -1598,7 +1708,8 @@ function getCodeForCurrentTask() {
         }
     }
     
-    return '// Start coding here...';
+    // Fallback to boilerplate
+    return getBoilerplateCode(currentTechnology);
 }
 
 function updateEditorCode() {
