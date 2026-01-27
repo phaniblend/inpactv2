@@ -191,19 +191,19 @@ Technology: ${technology}
 Tutorial MUST be for "${atomicTask}" exactly. Do NOT substitute a different topic.
 
 === TONE ===
-You're a supportive coding teacher talking to a student who's learning. Be encouraging, conversational, and friendly. Use "you" and "we" to make it personal. Explain things like you're right there helping them understand. Make it feel like a conversation, not a lecture. Use encouraging phrases like "You've got this!", "Let's break this down together", "Here's the cool part", "Don't worry if this feels tricky at first". Keep explanations clear and relatable, using everyday analogies when helpful. Focus on WHY things work, not just WHAT to do.
+You're a supportive coding teacher talking to a student who's learning. Be encouraging, conversational, and friendly. Use "you" and "we" to make it personal. Explain things like you're right there helping them understand. Make it feel like a conversation, not a lecture. Use encouraging phrases like "You've got this!", "Let's break this down together", "Here's the cool part", "Don't worry if this feels tricky at first". Keep explanations clear and relatable, using everyday analogies when helpful. Focus on WHY things work, not just WHAT to do. Write like you're talking to a friend, not a robot. Be natural and warm.
 
 === 10 SCREENS ===
 
-1. problem-context: What this task requires (NO code)
-2. input-output: Concrete input → output example
-3. approach: Strategy via different domain analogy
-4. signature: Function interface
-5. data-structure: Key construct needed
-6. iteration: Traversal pattern
-7. core-logic: Main decision step with complete code
-8. pattern-summary: Name pattern, other uses (NO code)
-9. implementation: Starter code for learner
+1. problem-context: Start with "The goal of this step is to build a function that..." - make it action-oriented and conversational. Explain what they'll be building and why it matters in a friendly, encouraging way (NO code)
+2. input-output: Concrete input → output example with friendly explanation
+3. approach: Strategy via different domain analogy - use relatable, everyday examples
+4. signature: Function interface - explain it conversationally
+5. data-structure: Key construct needed - explain why we need it in friendly terms
+6. iteration: Traversal pattern - explain the approach conversationally
+7. core-logic: Main decision step with complete code - walk through it together
+8. pattern-summary: Name pattern, other uses - explain where else they'll see this (NO code)
+9. implementation: Starter code for learner - encourage them to try
 10. solution: Complete reference code
 
 === JSON FORMAT ===
@@ -220,8 +220,8 @@ Return ONLY this JSON structure:
       "screenType": "problem-context",
       "title": "Problem Context",
       "content": {
-        "goal": "What you'll be building (encouraging, conversational)",
-        "context": "Why this matters and when you'd use it (friendly explanation)"
+        "goal": "Start with 'The goal of this step is to build a function that...' - make it action-oriented, conversational, and encouraging. Explain what they'll build in friendly, natural language.",
+        "context": "Explain why this matters and when they'd use it in real projects. Be conversational and relatable - like you're explaining to a friend why this skill is useful."
       }
     },
     {
