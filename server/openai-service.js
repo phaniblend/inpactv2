@@ -55,36 +55,42 @@ export async function generateLearningObjectives(task, technology) {
       messages: [
         {
           role: "user",
-          content: `Analyze this coding task and identify the CONCRETE TECHNICAL SKILLS a beginner will learn by completing it.
+          content: `Analyze this coding task and identify CONCRETE APPLICATION-LEVEL SKILLS (Bloom's Taxonomy Level 3) that a beginner will be able to apply after completing it.
 
 Task: "${task}"
 Technology: ${technology}
 
-Generate 6-10 learning objectives that describe REUSABLE SKILLS, not task-specific outcomes.
+Generate 6-10 learning objectives using APPLICATION-LEVEL action verbs. Each objective should describe what the learner will be able to DO/APPLY, not just what they'll know.
+
+BLOOM'S TAXONOMY LEVEL 3 (APPLICATION) - Use action verbs like:
+- Apply, Use, Implement, Execute, Solve, Construct, Demonstrate, Practice, Calculate, Operate
 
 RULES:
+- Start each objective with an action verb (Apply, Use, Implement, Execute, etc.)
 - Each objective should name a SPECIFIC technical concept or language feature
 - Focus on skills that transfer to other projects
 - Be concrete: mention actual syntax, methods, patterns by name
 - Write for complete beginners who may not know these concepts yet
+- Format: "Apply [concept] to [action]" or "Use [tool] to [achieve goal]"
 
-BAD (too abstract/task-specific):
+BAD (too abstract/task-specific/knowledge-level):
 - "Implement the twoSum algorithm" (just describes the task)
 - "Solve the problem efficiently" (vague)
 - "Build an optimized solution" (doesn't say what they'll learn)
+- "Understand JavaScript objects" (knowledge level, not application)
 
-GOOD (concrete, transferable skills):
-- "Use JavaScript objects as hash maps for O(1) key-value lookups"
-- "Iterate through arrays using for loops with index tracking"
-- "Access array elements by index using bracket notation (arr[i])"
-- "Store and retrieve values from objects using dynamic keys (obj[variable])"
-- "Use the 'in' operator to check if a key exists in an object"
-- "Return early from a function when a condition is met"
-- "Calculate values using arithmetic operators (subtraction for complements)"
+GOOD (application-level, concrete, transferable):
+- "Apply JavaScript objects as hash maps to achieve O(1) key-value lookups"
+- "Use for loops with index tracking to iterate through arrays"
+- "Apply bracket notation (arr[i]) to access array elements by index"
+- "Use dynamic keys (obj[variable]) to store and retrieve values from objects"
+- "Apply the 'in' operator to check if a key exists in an object"
+- "Use early return statements to exit functions when conditions are met"
+- "Apply arithmetic operators to calculate complementary values"
 
-Output format - just the numbered list, no headers:
-1. Skill description
-2. Skill description
+Output format - just the numbered list, no headers, each starting with an action verb:
+1. Apply/Use [skill] to [action]
+2. Apply/Use [skill] to [action]
 ...`
         }
       ]
