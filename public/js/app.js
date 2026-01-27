@@ -375,7 +375,46 @@ prevStepBtn.addEventListener('click', () => navigateScreen(-1));
 nextStepBtn.addEventListener('click', () => navigateScreen(1));
 
 // Initialize question bank on page load
-document.addEventListener('DOMContentLoaded', initQuestionBank);
+document.addEventListener('DOMContentLoaded', () => {
+    initQuestionBank();
+    handleURLParameters();
+});
+
+// ============================================================================
+// URL PARAMETER HANDLING
+// ============================================================================
+
+function handleURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const task = urlParams.get('task');
+    const technology = urlParams.get('technology');
+    
+    if (task && technology) {
+        // Populate form fields
+        const decodedTask = decodeURIComponent(task);
+        const decodedTech = decodeURIComponent(technology);
+        
+        if (taskInput) taskInput.value = decodedTask;
+        if (technologyInput) technologyInput.value = decodedTech;
+        
+        // Only auto-submit if form is visible (initial page state)
+        // Don't auto-submit if results are already showing
+        const formVisible = form && !form.classList.contains('hidden');
+        const resultsVisible = resultsDiv && !resultsDiv.classList.contains('hidden');
+        
+        if (formVisible && !resultsVisible) {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                // Trigger form submission programmatically
+                const submitEvent = new Event('submit', { 
+                    cancelable: true, 
+                    bubbles: true 
+                });
+                form.dispatchEvent(submitEvent);
+            }, 100);
+        }
+    }
+}
 
 // ============================================================================
 // PHASE 1: GENERATE LEARNING OBJECTIVES
@@ -386,6 +425,12 @@ async function handleSubmit(e) {
     
     currentTask = taskInput.value.trim();
     currentTechnology = technologyInput.value.trim();
+    
+    // Update URL without reloading page
+    const url = new URL(window.location);
+    url.searchParams.set('task', encodeURIComponent(currentTask));
+    url.searchParams.set('technology', encodeURIComponent(currentTechnology));
+    window.history.pushState({}, '', url);
     
     hideAll();
     loadingDiv.classList.remove('hidden');
