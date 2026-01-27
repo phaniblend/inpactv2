@@ -90,9 +90,25 @@ Output format - just the numbered list, no headers:
       ]
     });
 
-    return message.content[0].text;
+    // Handle different response formats
+    if (!message || !message.content || !message.content[0]) {
+      throw new Error('Invalid API response format');
+    }
+
+    const content = message.content[0];
+    if (content.type === 'text') {
+      return content.text;
+    } else {
+      throw new Error(`Unexpected content type: ${content.type}`);
+    }
   } catch (error) {
     console.error('Anthropic API Error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.status,
+      statusText: error.statusText,
+      name: error.name
+    });
     throw error;
   }
 }

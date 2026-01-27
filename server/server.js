@@ -33,11 +33,26 @@ app.post('/api/generate-objectives', async (req, res) => {
       return res.status(400).json({ error: 'Both task and technology are required' });
     }
     console.log(`Generating objectives for: "${task}" in ${technology}`);
+    
+    // Check if API key is configured
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error', 
+        message: 'ANTHROPIC_API_KEY environment variable is not set. Please configure your .env file.' 
+      });
+    }
+    
     const objectives = await generateLearningObjectives(task, technology);
     res.json({ success: true, objectives, task, technology });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Failed to generate learning objectives', message: error.message });
+    console.error('Error generating objectives:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to generate learning objectives', 
+      message: error.message || 'Unknown error occurred',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -130,6 +145,8 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('⚠️  WARNING: ANTHROPIC_API_KEY not found!');
+    console.error('⚠️  Please create a .env file in the root directory with:');
+    console.error('⚠️  ANTHROPIC_API_KEY=your_api_key_here');
   } else {
     console.log('✓ Anthropic API key loaded');
   }
