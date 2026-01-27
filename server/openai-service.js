@@ -191,7 +191,7 @@ Technology: ${technology}
 Tutorial MUST be for "${atomicTask}" exactly. Do NOT substitute a different topic.
 
 === TONE ===
-Senior engineer to junior peer. Calm, precise. Focus on WHY, not line-by-line narration. 1-2 sentence explanations. No hype words.
+You're a supportive coding teacher talking to a student who's learning. Be encouraging, conversational, and friendly. Use "you" and "we" to make it personal. Explain things like you're right there helping them understand. Make it feel like a conversation, not a lecture. Use encouraging phrases like "You've got this!", "Let's break this down together", "Here's the cool part", "Don't worry if this feels tricky at first". Keep explanations clear and relatable, using everyday analogies when helpful. Focus on WHY things work, not just WHAT to do.
 
 === 10 SCREENS ===
 
@@ -220,8 +220,8 @@ Return ONLY this JSON structure:
       "screenType": "problem-context",
       "title": "Problem Context",
       "content": {
-        "goal": "What we need to build",
-        "context": "When this is useful"
+        "goal": "What you'll be building (encouraging, conversational)",
+        "context": "Why this matters and when you'd use it (friendly explanation)"
       }
     },
     {
@@ -231,7 +231,7 @@ Return ONLY this JSON structure:
       "content": {
         "input": "const nums = [2, 7, 11, 15];\\nconst target = 9;",
         "output": "[0, 1]",
-        "explanation": "Because nums[0] + nums[1] = 9"
+        "explanation": "Friendly explanation of why this works (conversational)"
       }
     },
     {
@@ -240,7 +240,7 @@ Return ONLY this JSON structure:
       "title": "Approach",
       "content": {
         "domain": "Inventory System",
-        "explanation": "Like checking if a complementary part exists in stock",
+        "explanation": "Conversational analogy that helps you understand the approach",
         "code": "// inventory lookup example"
       }
     },
@@ -250,8 +250,8 @@ Return ONLY this JSON structure:
       "title": "Function Signature",
       "content": {
         "code": "function name(params) { }",
-        "parameters": [{"name": "param", "description": "what it is"}],
-        "returns": "what it returns"
+        "parameters": [{"name": "param", "description": "friendly explanation of what this parameter does"}],
+        "returns": "encouraging explanation of what you'll get back"
       }
     },
     {
@@ -260,7 +260,7 @@ Return ONLY this JSON structure:
       "title": "Data Structure",
       "content": {
         "structure": "Hash Map",
-        "reasoning": "O(1) lookup for complements",
+        "reasoning": "Conversational explanation of why we need this and how it helps you",
         "code": "const seen = {};"
       }
     },
@@ -270,7 +270,7 @@ Return ONLY this JSON structure:
       "title": "Iteration",
       "content": {
         "strategy": "Single pass",
-        "reasoning": "Check and store in one loop",
+        "reasoning": "Friendly explanation of why this approach works well for you",
         "code": "for (let i = 0; i < arr.length; i++) { }"
       }
     },
@@ -279,11 +279,11 @@ Return ONLY this JSON structure:
       "screenType": "core-logic",
       "title": "Core Logic",
       "content": {
-        "reasoning": "Key insight explanation",
+        "reasoning": "Encouraging explanation that helps you understand the core idea",
         "steps": ["Calculate complement", "Check if exists", "Return or store"],
         "code": "// complete function here",
         "walkthrough": {
-          "description": "Let's trace through with nums = [2, 7, 11, 15], target = 9",
+          "description": "Encouraging walkthrough: Let's trace through together with nums = [2, 7, 11, 15], target = 9",
           "iterations": [
             {
               "step": "i = 0, nums[0] = 2",
@@ -306,7 +306,7 @@ Return ONLY this JSON structure:
       "title": "Pattern Summary",
       "content": {
         "patternName": "Complement Lookup",
-        "description": "Use hash map for O(1) complement checks",
+        "description": "Friendly explanation of the pattern and why it's useful for you",
         "applications": ["Finding pairs", "Detecting duplicates"]
       }
     },
@@ -315,7 +315,7 @@ Return ONLY this JSON structure:
       "screenType": "implementation",
       "title": "Implementation",
       "content": {
-        "instruction": "Implement using the pattern above",
+        "instruction": "Encouraging instruction: Now it's your turn! Try implementing this using what we've learned. Don't worry if you get stuck - that's part of learning!",
         "starterCode": "function name(params) {\\n  // your code\\n}",
         "testCase": "test case here"
       }
