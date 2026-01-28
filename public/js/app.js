@@ -831,7 +831,7 @@ function renderScreen(index) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function getScreenHTML(screen) {
+function getScreenHTML(screen, isEditorView = false) {
     const type = screen.screenType;
     const content = screen.content || {};
     const num = screen.screenNumber || '';
@@ -1060,7 +1060,7 @@ function getScreenHTML(screen) {
                         <div id="hintDisplay" class="hint-display hidden"></div>
                         
                         <div class="practice-actions">
-                            <button id="checkCodeBtn" class="btn-primary">Check Code</button>
+                            ${!isEditorView ? '<button id="checkCodeBtn" class="btn-primary">Check Code</button>' : ''}
                             <button id="showHintBtn" class="btn-secondary">Hint (${hintCount}/3)</button>
                             <button id="showSolutionBtn" class="btn-secondary">View Solution</button>
                         </div>
@@ -1969,7 +1969,7 @@ function updateEditorView() {
         
         if (screen && editorTutorialContent) {
             try {
-                let screenHTML = getScreenHTML(screen);
+                let screenHTML = getScreenHTML(screen, true); // true = isEditorView
                 if (screenHTML && screenHTML.trim()) {
                     // Add mentor section for editor view
                     screenHTML += `
