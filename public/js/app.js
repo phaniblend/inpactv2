@@ -1479,6 +1479,7 @@ async function openOnlineEditor(taskText) {
     updateEditorView();
     updateEditorProgressIndicator();
     updateEditorCode();
+    updateProgressCodeView();
 }
 
 async function initializeMonacoEditor() {
@@ -1560,7 +1561,7 @@ function updateEditorProgressIndicator() {
     const indicator = document.getElementById('editorProgressIndicator');
     if (!indicator || !allTasks.length) return;
     
-    let html = '<div style="font-weight: 600; margin-bottom: 8px; color: rgba(255,255,255,0.9);">🚀 Your Learning Roadmap</div>';
+    let html = '<div style="font-weight: 600; margin-bottom: 12px; color: rgba(255,255,255,0.9); font-size: 0.85rem;">🚀 Your Learning Roadmap</div>';
     
     allTasks.forEach((task, index) => {
         const isCurrent = index === currentEditorTaskIndex;
@@ -1578,13 +1579,130 @@ function updateEditorProgressIndicator() {
         
         const taskClass = isCurrent ? 'current' : (isCompleted ? 'completed' : '');
         html += `
-            <div class="editor-progress-task ${taskClass}">
+            <div class="editor-progress-task ${taskClass}" data-task-index="${index}" style="cursor: pointer;">
                 <strong>Task ${index + 1}:</strong> ${task} ${status ? `<span style="float: right;">${status}</span>` : ''}
             </div>
         `;
     });
     
     indicator.innerHTML = html;
+    
+    // Add click handlers for task navigation
+    indicator.querySelectorAll('.editor-progress-task').forEach(taskEl => {
+        taskEl.addEventListener('click', () => {
+            const taskIndex = parseInt(taskEl.dataset.taskIndex);
+            if (taskIndex !== undefined && taskIndex !== currentEditorTaskIndex) {
+                switchToTask(taskIndex);
+            }
+        });
+    });
+}
+
+async function switchToTask(taskIndex) {
+    if (taskIndex < 0 || taskIndex >= allTasks.length) return;
+    
+    const taskText = allTasks[taskIndex];
+    currentEditorTaskIndex = taskIndex;
+    currentAtomicTask = taskText;
+    
+    // Load tutorial for this task if needed
+    if (!currentTutorial || currentAtomicTask !== taskText) {
+        showGlobalLoading();
+        try {
+            const response = await fetch('/api/generate-tutorial', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    atomicTask: taskText,
+                    projectContext: { task: currentTask, technology: currentTechnology }
+                })
+            });
+            
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to generate tutorial');
+            
+            currentTutorial = data.tutorial;
+            currentScreenIndex = 0;
+        } catch (error) {
+            displayError(error.message);
+            hideGlobalLoading();
+            return;
+        } finally {
+            hideGlobalLoading();
+        }
+    }
+    
+    // Update views
+    updateEditorView();
+    updateEditorProgressIndicator();
+    updateEditorCode();
+    updateProgressCodeView();
+}
+
+function updateProgressCodeView() {
+    const progressCodeView = document.getElementById('progressCodeView');
+    const progressCodeContent = document.getElementById('progressCodeContent');
+    if (!progressCodeView || !progressCodeContent) return;
+    
+    // Need to load tutorials for all tasks to get their code
+    // For now, show accumulated code from student submissions and current task
+    let html = '';
+    
+    allTasks.forEach((task, index) => {
+        const isCurrent = index === currentEditorTaskIndex;
+        const isCompleted = completedTasks.includes(task);
+        const isSetup = isSetupTask(task);
+        
+        const sectionClass = isCurrent ? 'current' : (isCompleted ? 'completed' : '');
+        
+        // Get code for this task
+        let taskCode = '';
+        if (studentCodeByTask[task]) {
+            // Use student's submitted code
+            taskCode = studentCodeByTask[task];
+        } else if (isCurrent && currentTutorial && currentTutorial.screens) {
+            // For current task, get solution code from tutorial
+            const solutionScreen = currentTutorial.screens.find(s => s.screenType === 'solution');
+            if (solutionScreen && solutionScreen.content && solutionScreen.content.code) {
+                taskCode = solutionScreen.content.code.replace(/\\n/g, '\n');
+            } else {
+                const implScreen = currentTutorial.screens.find(s => s.screenType === 'implementation');
+                if (implScreen && implScreen.content && implScreen.content.starterCode) {
+                    taskCode = implScreen.content.starterCode.replace(/\\n/g, '\n');
+                }
+            }
+        } else if (isSetup) {
+            // Setup tasks get boilerplate
+            taskCode = getBoilerplateCode(currentTechnology);
+        } else if (index < currentEditorTaskIndex) {
+            // For previous tasks, show placeholder (in future, load their tutorials)
+            taskCode = `// Task ${index + 1} code\n// (Code will be shown here once you complete this task)`;
+        }
+        
+        if (taskCode || index <= currentEditorTaskIndex) {
+            const codeToShow = taskCode || `// Task ${index + 1}: ${task}\n// Code will appear here`;
+            html += `
+                <div class="progress-code-task-section ${sectionClass}" data-task-index="${index}">
+                    <div class="progress-code-task-header">
+                        Task ${index + 1}: ${task} ${isCurrent ? '<span class="progress-code-highlight">(Current - Highlighted)</span>' : ''}
+                    </div>
+                    <pre class="progress-code-content">${escapeHtml(codeToShow)}</pre>
+                </div>
+            `;
+        }
+    });
+    
+    progressCodeContent.innerHTML = html;
+    
+    // Add click handlers for two-way navigation
+    progressCodeContent.querySelectorAll('.progress-code-task-section').forEach(section => {
+        section.addEventListener('click', () => {
+            const taskIndex = parseInt(section.dataset.taskIndex);
+            if (taskIndex !== undefined && taskIndex !== currentEditorTaskIndex) {
+                switchToTask(taskIndex);
+            }
+        });
+    });
 }
 
 function getBoilerplateCode(technology) {
@@ -1799,6 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             completedTasks.push(allTasks[currentEditorTaskIndex]);
                         }
                         updateEditorProgressIndicator();
+                        updateProgressCodeView();
                     } else {
                         output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation.feedback?.[0]?.message || 'Not quite right. Keep trying!'}</span>`;
                     }
@@ -1810,6 +1929,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } finally {
                 hideGlobalLoading();
+            }
+        });
+    }
+    
+    if (progressToggleBtn) {
+        let isProgressView = false;
+        progressToggleBtn.addEventListener('click', () => {
+            isProgressView = !isProgressView;
+            const monacoContainer = document.getElementById('monacoEditor');
+            const progressCodeView = document.getElementById('progressCodeView');
+            const progressIndicator = document.getElementById('editorProgressIndicator');
+            
+            if (isProgressView) {
+                // Show progress view
+                if (monacoContainer) monacoContainer.classList.add('hidden');
+                if (progressCodeView) progressCodeView.classList.remove('hidden');
+                if (progressIndicator) progressIndicator.classList.remove('hidden');
+                progressToggleBtn.classList.add('active');
+                progressToggleBtn.textContent = '✏️ Editor';
+                updateProgressCodeView();
+            } else {
+                // Show editor
+                if (monacoContainer) monacoContainer.classList.remove('hidden');
+                if (progressCodeView) progressCodeView.classList.add('hidden');
+                if (progressIndicator) progressIndicator.classList.add('hidden');
+                progressToggleBtn.classList.remove('active');
+                progressToggleBtn.textContent = '📊 Progress';
             }
         });
     }
