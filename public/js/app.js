@@ -1865,8 +1865,9 @@ function hideAll() {
 // ============================================================================
 
 async function openOnlineEditor(taskText) {
-    // Hide tutorial view, show editor view
+    // Hide tutorial view and breakdown view, show editor view
     tutorialView.classList.add('hidden');
+    breakdownResults.classList.add('hidden');
     const onlineEditorView = document.getElementById('onlineEditorView');
     if (!onlineEditorView) return;
     
