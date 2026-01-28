@@ -49,15 +49,26 @@ async function executeCode(code, language) {
         // Clean up
         await fs.unlink(tempFile).catch(() => {});
         
+        // If there's stderr but also stdout, combine them
+        // If only stderr, treat it as an error
+        if (stderr && !stdout) {
+          return {
+            output: '',
+            error: stderr
+          };
+        }
+        
         return {
-          output: stdout || stderr || 'Code executed successfully',
-          error: stderr ? null : null
+          output: stdout || 'Code executed successfully (no output)',
+          error: null
         };
       } catch (execError) {
         await fs.unlink(tempFile).catch(() => {});
+        // Extract error message from stderr or use the error message
+        const errorMsg = execError.stderr || execError.stdout || execError.message || 'Execution error';
         return {
           output: '',
-          error: execError.stderr || execError.message || 'Execution error'
+          error: errorMsg.toString().trim()
         };
       }
     } else if (lang.includes('python')) {
