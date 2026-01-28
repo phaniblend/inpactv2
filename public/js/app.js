@@ -1496,7 +1496,20 @@ async function openOnlineEditor(taskText) {
             
             currentTutorial = data.tutorial;
             currentAtomicTask = taskText;
+            // Explicitly set to first screen
             currentScreenIndex = 0;
+            
+            // Force immediate render of first screen
+            if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
+                const editorTutorialContent = document.getElementById('editorTutorialContent');
+                if (editorTutorialContent && currentTutorial.screens[0]) {
+                    try {
+                        editorTutorialContent.innerHTML = getScreenHTML(currentTutorial.screens[0]);
+                    } catch (error) {
+                        console.error('Error rendering first screen immediately:', error);
+                    }
+                }
+            }
         } catch (error) {
             displayError(error.message);
             hideGlobalLoading();
@@ -1507,13 +1520,25 @@ async function openOnlineEditor(taskText) {
     }
     
     // Ensure screen index is properly initialized
-    if (!currentTutorial || !currentTutorial.screens || currentTutorial.screens.length === 0) {
-        // Tutorial not loaded yet, will be updated when loaded
-    } else if (currentScreenIndex < 0 || currentScreenIndex >= currentTutorial.screens.length) {
-        currentScreenIndex = 0;
+    if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
+        if (currentScreenIndex < 0 || currentScreenIndex >= currentTutorial.screens.length) {
+            currentScreenIndex = 0;
+        }
+        // Ensure first screen is rendered if not already
+        const editorTutorialContent = document.getElementById('editorTutorialContent');
+        if (editorTutorialContent && !editorTutorialContent.innerHTML.trim()) {
+            const screen = currentTutorial.screens[currentScreenIndex];
+            if (screen) {
+                try {
+                    editorTutorialContent.innerHTML = getScreenHTML(screen);
+                } catch (error) {
+                    console.error('Error rendering screen in fallback:', error);
+                }
+            }
+        }
     }
     
-    // Update editor view
+    // Update editor view (this will refresh everything)
     updateEditorView();
     updateEditorProgressIndicator();
     updateEditorCode();
