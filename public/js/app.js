@@ -1567,15 +1567,39 @@ function updateEditorView() {
     
     // Render current tutorial screen
     if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
+        // Ensure we have a valid screen index
+        if (currentScreenIndex < 0 || currentScreenIndex >= currentTutorial.screens.length) {
+            currentScreenIndex = 0;
+        }
+        
         const screen = currentTutorial.screens[currentScreenIndex];
+        
         if (screen && editorTutorialContent) {
-            editorTutorialContent.innerHTML = getScreenHTML(screen);
+            try {
+                const screenHTML = getScreenHTML(screen);
+                if (screenHTML && screenHTML.trim()) {
+                    editorTutorialContent.innerHTML = screenHTML;
+                } else {
+                    console.warn('getScreenHTML returned empty string for screen:', screen);
+                    editorTutorialContent.innerHTML = `<div class="screen-container"><p>Screen ${currentScreenIndex + 1}: ${screen.screenType || 'Unknown'}</p></div>`;
+                }
+            } catch (error) {
+                console.error('Error rendering screen:', error, screen);
+                editorTutorialContent.innerHTML = `<div class="screen-container"><p>Error rendering screen. Screen type: ${screen.screenType || 'Unknown'}</p></div>`;
+            }
         } else if (editorTutorialContent) {
             // If screen not found, show first screen
             const firstScreen = currentTutorial.screens[0];
             if (firstScreen) {
                 currentScreenIndex = 0;
-                editorTutorialContent.innerHTML = getScreenHTML(firstScreen);
+                try {
+                    editorTutorialContent.innerHTML = getScreenHTML(firstScreen);
+                } catch (error) {
+                    console.error('Error rendering first screen:', error);
+                    editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">Error loading tutorial content.</p>';
+                }
+            } else {
+                editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">No tutorial screens available.</p>';
             }
         }
         
@@ -1591,7 +1615,11 @@ function updateEditorView() {
         }
     } else if (editorTutorialContent) {
         // Show loading or placeholder if tutorial not loaded
-        editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">Loading tutorial content...</p>';
+        if (!currentTutorial) {
+            editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">Loading tutorial content...</p>';
+        } else {
+            editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">No tutorial screens available. Tutorial loaded but has no screens.</p>';
+        }
     }
 }
 
