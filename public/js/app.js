@@ -593,7 +593,7 @@ async function handleTaskClick(taskText) {
         showGlobalLoading();
         // Small delay to show loading for setup tasks too
         setTimeout(() => {
-            displaySetupTask(taskText);
+        displaySetupTask(taskText);
             hideGlobalLoading();
         }, 10);
         return;
@@ -672,11 +672,11 @@ function displaySetupTask(taskText) {
                             <h4>Setup your own environment</h4>
                             <p>Watch the tutorial and set up your local environment. This gives you full control over your development setup and helps you learn the fundamentals.</p>
                             <a href="${setupInfo.youtubeLink}" target="_blank" rel="noopener noreferrer" class="setup-option-link">
-                                ▶ Watch setup tutorials on YouTube
-                            </a>
+                        ▶ Watch setup tutorials on YouTube
+                    </a>
                         </div>
-                    </div>
-                    
+                </div>
+                
                     <div class="setup-option">
                         <div class="setup-option-icon">💻</div>
                         <div class="setup-option-content">
@@ -1331,7 +1331,7 @@ function navigateScreen(direction) {
             completedTasks.push(currentAtomicTask);
         }
         setTimeout(() => {
-            showTaskBreakdown();
+        showTaskBreakdown();
             hideGlobalLoading();
         }, 10);
         return;
@@ -1339,7 +1339,7 @@ function navigateScreen(direction) {
     
     currentScreenIndex = newIndex;
     setTimeout(() => {
-        renderScreen(currentScreenIndex);
+    renderScreen(currentScreenIndex);
         hideGlobalLoading();
     }, 10);
 }
@@ -1967,7 +1967,7 @@ function updateEditorView() {
                                 <textarea 
                                     id="editorMentorQuery" 
                                     class="mentor-query-input" 
-                                    placeholder="Need clarification on something from this screen? Ask your mentor! (e.g., 'What does console.log do?' or 'How do pointers work?')"
+                                    placeholder="Stuck on something from this screen? Ask your mentor for help! For example: 'What does console.log do?' or 'How do left and right pointers work in binary search?'"
                                     rows="3"
                                 ></textarea>
                                 <button id="editorAskMentorBtn" class="btn-mentor">Ask Mentor</button>
