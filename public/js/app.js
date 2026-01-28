@@ -1844,6 +1844,13 @@ async function openOnlineEditor(taskText) {
     
     onlineEditorView.classList.remove('hidden');
     
+    // Set toggle button initial state (editor is visible by default)
+    const toggleEditorBtn = document.getElementById('toggleEditorBtn');
+    if (toggleEditorBtn) {
+        toggleEditorBtn.textContent = '💻 Hide Editor';
+        toggleEditorBtn.classList.add('active');
+    }
+    
     // Find the current task index
     currentEditorTaskIndex = allTasks.findIndex(t => t === taskText);
     if (currentEditorTaskIndex === -1) currentEditorTaskIndex = 0;
