@@ -1641,7 +1641,6 @@ async function switchToTask(taskIndex) {
     updateEditorView();
     updateEditorProgressIndicator();
     updateEditorCode();
-    updateProgressCodeView();
 }
 
 function updateProgressCodeView() {
@@ -1993,7 +1992,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             completedTasks.push(allTasks[currentEditorTaskIndex]);
                         }
                         updateEditorProgressIndicator();
-                        updateProgressCodeView();
                     } else {
                         output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation.feedback?.[0]?.message || 'Not quite right. Keep trying!'}</span>`;
                     }
