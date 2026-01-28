@@ -1674,6 +1674,11 @@ function updateEditorView() {
                 const screenHTML = getScreenHTML(screen);
                 if (screenHTML && screenHTML.trim()) {
                     editorTutorialContent.innerHTML = screenHTML;
+                    
+                    // Setup practice screen buttons if this is an implementation screen
+                    if (screen.screenType === 'now-you-try' || screen.screenType === 'implementation') {
+                        setupPracticeScreenForEditor(screen);
+                    }
                 } else {
                     console.warn('getScreenHTML returned empty string for screen:', screen);
                     editorTutorialContent.innerHTML = `<div class="screen-container"><p>Screen ${currentScreenIndex + 1}: ${screen.screenType || 'Unknown'}</p></div>`;
