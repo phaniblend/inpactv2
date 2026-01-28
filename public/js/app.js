@@ -1052,12 +1052,14 @@ function getScreenHTML(screen, isEditorView = false) {
                         <p class="instruction-text">${content.instruction || ''}</p>
                         ${content.testCase ? `<p class="test-case"><strong>Test:</strong> <code>${content.testCase}</code></p>` : ''}
                         
+                        ${!isEditorView ? `
                         <div class="code-editor-container">
                             <textarea id="codeEditor" class="code-editor" spellcheck="false">${escapeHtml(content.starterCode || '// Your code here')}</textarea>
                         </div>
                         
                         <div id="validationFeedback" class="validation-feedback hidden"></div>
                         <div id="hintDisplay" class="hint-display hidden"></div>
+                        ` : ''}
                         
                         <div class="practice-actions">
                             ${!isEditorView ? '<button id="checkCodeBtn" class="btn-primary">Check Code</button>' : ''}
