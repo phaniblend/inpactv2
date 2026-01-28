@@ -1454,13 +1454,32 @@ async function openOnlineEditor(taskText) {
     currentEditorTaskIndex = allTasks.findIndex(t => t === taskText);
     if (currentEditorTaskIndex === -1) currentEditorTaskIndex = 0;
     
+    // If this is a setup task, skip to the first non-setup task
+    if (isSetupTask(taskText)) {
+        let nextTaskIndex = currentEditorTaskIndex + 1;
+        while (nextTaskIndex < allTasks.length && isSetupTask(allTasks[nextTaskIndex])) {
+            nextTaskIndex++;
+        }
+        if (nextTaskIndex < allTasks.length) {
+            taskText = allTasks[nextTaskIndex];
+            currentEditorTaskIndex = nextTaskIndex;
+        } else {
+            // No non-setup tasks found, show message
+            const editorTutorialContent = document.getElementById('editorTutorialContent');
+            if (editorTutorialContent) {
+                editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">All tasks are setup tasks. Please complete setup first.</p>';
+            }
+            return;
+        }
+    }
+    
     // Initialize Monaco editor if not already done
     if (!monacoEditor) {
         await initializeMonacoEditor();
     }
     
-    // Load tutorial for this task if not already loaded
-    if (!currentTutorial || currentAtomicTask !== taskText) {
+    // Load tutorial for this task if not already loaded (skip for setup tasks)
+    if (!isSetupTask(taskText) && (!currentTutorial || currentAtomicTask !== taskText)) {
         showGlobalLoading();
         try {
             const response = await fetch('/api/generate-tutorial', {
@@ -1676,10 +1695,28 @@ async function switchToTask(taskIndex) {
     if (taskIndex < 0 || taskIndex >= allTasks.length) return;
     
     const taskText = allTasks[taskIndex];
+    
+    // Skip setup tasks - find next non-setup task
+    if (isSetupTask(taskText)) {
+        let nextTaskIndex = taskIndex + 1;
+        while (nextTaskIndex < allTasks.length && isSetupTask(allTasks[nextTaskIndex])) {
+            nextTaskIndex++;
+        }
+        if (nextTaskIndex < allTasks.length) {
+            return switchToTask(nextTaskIndex);
+        } else {
+            // No more non-setup tasks
+            const onlineEditorView = document.getElementById('onlineEditorView');
+            if (onlineEditorView) onlineEditorView.classList.add('hidden');
+            showTaskBreakdown();
+            return;
+        }
+    }
+    
     currentEditorTaskIndex = taskIndex;
     currentAtomicTask = taskText;
     
-    // Load tutorial for this task if needed
+    // Load tutorial for this task if needed (only for non-setup tasks)
     if (!currentTutorial || currentAtomicTask !== taskText) {
         showGlobalLoading();
         try {
@@ -1965,8 +2002,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (editorNextBtn) {
-        editorNextBtn.addEventListener('click', () => {
-            if (!currentTutorial || !currentTutorial.screens) return;
+        editorNextBtn.addEventListener('click', async () => {
+            if (!currentTutorial || !currentTutorial.screens) {
+                console.warn('No tutorial or screens available');
+                return;
+            }
             
             if (currentScreenIndex < currentTutorial.screens.length - 1) {
                 currentScreenIndex++;
@@ -1978,10 +2018,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateEditorProgressIndicator();
                 
-                // Go to next task or back to roadmap
-                const nextTaskIndex = currentEditorTaskIndex + 1;
+                // Go to next non-setup task or back to roadmap
+                let nextTaskIndex = currentEditorTaskIndex + 1;
+                // Skip setup tasks
+                while (nextTaskIndex < allTasks.length && isSetupTask(allTasks[nextTaskIndex])) {
+                    nextTaskIndex++;
+                }
+                
                 if (nextTaskIndex < allTasks.length) {
-                    switchToTask(nextTaskIndex);
+                    await switchToTask(nextTaskIndex);
                 } else {
                     const onlineEditorView = document.getElementById('onlineEditorView');
                     if (onlineEditorView) onlineEditorView.classList.add('hidden');
