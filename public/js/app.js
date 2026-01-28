@@ -1502,6 +1502,24 @@ async function openOnlineEditor(taskText) {
     
     // Load tutorial for this task if not already loaded (skip for setup tasks)
     if (!isSetupTask(taskText) && (!currentTutorial || currentAtomicTask !== taskText)) {
+        // Show friendly loading message in tutorial pane
+        const editorTutorialContent = document.getElementById('editorTutorialContent');
+        if (editorTutorialContent) {
+            editorTutorialContent.innerHTML = `
+                <div style="padding: 40px 20px; text-align: center; color: #666;">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">✨</div>
+                    <h3 style="color: #333; margin-bottom: 16px; font-size: 1.3rem;">We're crafting your personalized tutorial!</h3>
+                    <p style="font-size: 1rem; line-height: 1.6; max-width: 500px; margin: 0 auto;">
+                        We're working on <strong>"${taskText}"</strong> right now, creating step-by-step guidance just for you. 
+                        This usually takes about a minute - we'll be with you soon!
+                    </p>
+                    <div style="margin-top: 30px;">
+                        <div class="global-spinner" style="margin: 0 auto; width: 40px; height: 40px;"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
         showGlobalLoading();
         try {
             const response = await fetch('/api/generate-tutorial', {
@@ -1523,7 +1541,6 @@ async function openOnlineEditor(taskText) {
             
             // Force immediate render of first screen
             if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
-                const editorTutorialContent = document.getElementById('editorTutorialContent');
                 if (editorTutorialContent && currentTutorial.screens[0]) {
                     try {
                         editorTutorialContent.innerHTML = getScreenHTML(currentTutorial.screens[0]);
@@ -1534,6 +1551,15 @@ async function openOnlineEditor(taskText) {
             }
         } catch (error) {
             displayError(error.message);
+            if (editorTutorialContent) {
+                editorTutorialContent.innerHTML = `
+                    <div style="padding: 40px 20px; text-align: center; color: #f87171;">
+                        <h3>Oops! Something went wrong</h3>
+                        <p>${error.message}</p>
+                        <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">Please try again or refresh the page.</p>
+                    </div>
+                `;
+            }
             hideGlobalLoading();
             return;
         } finally {
@@ -1765,6 +1791,24 @@ async function switchToTask(taskIndex) {
     
     // Load tutorial for this task if needed (only for non-setup tasks)
     if (!currentTutorial || currentAtomicTask !== taskText) {
+        // Show friendly loading message in tutorial pane
+        const editorTutorialContent = document.getElementById('editorTutorialContent');
+        if (editorTutorialContent) {
+            editorTutorialContent.innerHTML = `
+                <div style="padding: 40px 20px; text-align: center; color: #666;">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">✨</div>
+                    <h3 style="color: #333; margin-bottom: 16px; font-size: 1.3rem;">We're crafting your personalized tutorial!</h3>
+                    <p style="font-size: 1rem; line-height: 1.6; max-width: 500px; margin: 0 auto;">
+                        We're working on <strong>"${taskText}"</strong> right now, creating step-by-step guidance just for you. 
+                        This usually takes about a minute - we'll be with you soon!
+                    </p>
+                    <div style="margin-top: 30px;">
+                        <div class="global-spinner" style="margin: 0 auto; width: 40px; height: 40px;"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
         showGlobalLoading();
         try {
             const response = await fetch('/api/generate-tutorial', {
@@ -1784,7 +1828,6 @@ async function switchToTask(taskIndex) {
             
             // Force immediate render of first screen
             if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
-                const editorTutorialContent = document.getElementById('editorTutorialContent');
                 if (editorTutorialContent && currentTutorial.screens[0]) {
                     try {
                         editorTutorialContent.innerHTML = getScreenHTML(currentTutorial.screens[0]);
@@ -1795,6 +1838,15 @@ async function switchToTask(taskIndex) {
             }
         } catch (error) {
             displayError(error.message);
+            if (editorTutorialContent) {
+                editorTutorialContent.innerHTML = `
+                    <div style="padding: 40px 20px; text-align: center; color: #f87171;">
+                        <h3>Oops! Something went wrong</h3>
+                        <p>${error.message}</p>
+                        <p style="margin-top: 20px; font-size: 0.9rem; color: #666;">Please try again or refresh the page.</p>
+                    </div>
+                `;
+            }
             hideGlobalLoading();
             return;
         } finally {
