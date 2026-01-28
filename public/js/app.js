@@ -769,8 +769,9 @@ function renderScreen(index) {
     const progress = ((index + 1) / screens.length) * 100;
     stepProgressFill.style.width = `${progress}%`;
     
-    prevStepBtn.style.display = index === 0 ? 'none' : 'inline-block';
-    prevStepBtn.disabled = index === 0;
+    // Show Previous button even on first screen - it will go back to roadmap
+    prevStepBtn.style.display = 'inline-block';
+    prevStepBtn.disabled = false;
     
     nextStepBtn.textContent = index === screens.length - 1 ? 'Complete Task ✓' : 'Next →';
     nextStepBtn.disabled = false;
@@ -1071,7 +1072,15 @@ function navigateScreen(direction) {
     const screens = currentTutorial.screens || [];
     const newIndex = currentScreenIndex + direction;
     
-    if (newIndex < 0) return;
+    // If going back from first screen, return to roadmap
+    if (newIndex < 0) {
+        showGlobalLoading();
+        setTimeout(() => {
+            showTaskBreakdown();
+            hideGlobalLoading();
+        }, 10);
+        return;
+    }
     
     showGlobalLoading();
     
