@@ -1561,6 +1561,11 @@ function updateEditorProgressIndicator() {
     const indicator = document.getElementById('editorProgressIndicator');
     if (!indicator || !allTasks.length) return;
     
+    // Only update if indicator is visible
+    if (indicator.classList.contains('hidden') && !indicator.classList.contains('visible')) {
+        return;
+    }
+    
     let html = '<div style="font-weight: 600; margin-bottom: 12px; color: rgba(255,255,255,0.9); font-size: 0.85rem;">🚀 Your Learning Roadmap</div>';
     
     allTasks.forEach((task, index) => {
@@ -2005,28 +2010,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (progressToggleBtn) {
-        let isProgressView = false;
+        let isProgressVisible = false;
         progressToggleBtn.addEventListener('click', () => {
-            isProgressView = !isProgressView;
-            const monacoContainer = document.getElementById('monacoEditor');
-            const progressCodeView = document.getElementById('progressCodeView');
+            isProgressVisible = !isProgressVisible;
             const progressIndicator = document.getElementById('editorProgressIndicator');
             
-            if (isProgressView) {
-                // Show progress view
-                if (monacoContainer) monacoContainer.classList.add('hidden');
-                if (progressCodeView) progressCodeView.classList.remove('hidden');
-                if (progressIndicator) progressIndicator.classList.remove('hidden');
+            if (isProgressVisible) {
+                // Show progress indicator (roadmap)
+                if (progressIndicator) {
+                    progressIndicator.classList.add('visible');
+                    progressIndicator.classList.remove('hidden');
+                    updateEditorProgressIndicator();
+                }
                 progressToggleBtn.classList.add('active');
-                progressToggleBtn.textContent = '✏️ Editor';
-                updateProgressCodeView();
+                progressToggleBtn.textContent = '📊 Hide Roadmap';
             } else {
-                // Show editor
-                if (monacoContainer) monacoContainer.classList.remove('hidden');
-                if (progressCodeView) progressCodeView.classList.add('hidden');
-                if (progressIndicator) progressIndicator.classList.add('hidden');
+                // Hide progress indicator
+                if (progressIndicator) {
+                    progressIndicator.classList.remove('visible');
+                    progressIndicator.classList.add('hidden');
+                }
                 progressToggleBtn.classList.remove('active');
-                progressToggleBtn.textContent = '📊 Progress';
+                progressToggleBtn.textContent = '📊 Show Roadmap';
             }
         });
     }
