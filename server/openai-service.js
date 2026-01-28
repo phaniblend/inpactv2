@@ -302,8 +302,7 @@ Return ONLY this JSON structure:
               "seenState": "Found! Return indices [0, 1]"
             }
           ]
-        },
-        "objectExplanation": "The seen object stores each number as a KEY and its index as the VALUE. To check if a number exists, use: if (number in seen). To get its index: seen[number]. To store: seen[number] = index."
+        }
       }
     },
     {

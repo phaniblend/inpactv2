@@ -1007,12 +1007,6 @@ function getScreenHTML(screen, isEditorView = false) {
                                 </div>
                             </div>
                         ` : ''}
-                        ${content.objectExplanation ? `
-                            <div class="object-explanation">
-                                <h4>How the Object Works</h4>
-                                <p>${content.objectExplanation}</p>
-                            </div>
-                        ` : ''}
                     </div>
                 </div>
             `;
