@@ -1759,12 +1759,43 @@ async function switchToTask(taskIndex) {
             
             currentTutorial = data.tutorial;
             currentScreenIndex = 0;
+            
+            // Force immediate render of first screen
+            if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
+                const editorTutorialContent = document.getElementById('editorTutorialContent');
+                if (editorTutorialContent && currentTutorial.screens[0]) {
+                    try {
+                        editorTutorialContent.innerHTML = getScreenHTML(currentTutorial.screens[0]);
+                    } catch (error) {
+                        console.error('Error rendering first screen in switchToTask:', error);
+                    }
+                }
+            }
         } catch (error) {
             displayError(error.message);
             hideGlobalLoading();
             return;
         } finally {
             hideGlobalLoading();
+        }
+    }
+    
+    // Ensure screen index is valid and screen is rendered
+    if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
+        if (currentScreenIndex < 0 || currentScreenIndex >= currentTutorial.screens.length) {
+            currentScreenIndex = 0;
+        }
+        // Ensure screen is rendered if not already
+        const editorTutorialContent = document.getElementById('editorTutorialContent');
+        if (editorTutorialContent && (!editorTutorialContent.innerHTML.trim() || editorTutorialContent.innerHTML.includes('Loading'))) {
+            const screen = currentTutorial.screens[currentScreenIndex];
+            if (screen) {
+                try {
+                    editorTutorialContent.innerHTML = getScreenHTML(screen);
+                } catch (error) {
+                    console.error('Error rendering screen in switchToTask fallback:', error);
+                }
+            }
         }
     }
     
