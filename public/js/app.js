@@ -1086,6 +1086,207 @@ function setupPracticeScreen(screen) {
     if (solutionBtn) solutionBtn.addEventListener('click', showSolution);
 }
 
+// Setup practice screen buttons for editor view (uses Monaco editor instead of textarea)
+function setupPracticeScreenForEditor(screen) {
+    const checkBtn = document.getElementById('checkCodeBtn');
+    const hintBtn = document.getElementById('showHintBtn');
+    const solutionBtn = document.getElementById('showSolutionBtn');
+    
+    if (checkBtn) {
+        // Remove any existing listeners by cloning
+        const newCheckBtn = checkBtn.cloneNode(true);
+        checkBtn.parentNode.replaceChild(newCheckBtn, checkBtn);
+        newCheckBtn.addEventListener('click', () => {
+            if (monacoEditor) {
+                const code = monacoEditor.getValue();
+                validateCodeForEditor(code, screen);
+            } else {
+                validateCode();
+            }
+        });
+    }
+    
+    if (hintBtn) {
+        const newHintBtn = hintBtn.cloneNode(true);
+        hintBtn.parentNode.replaceChild(newHintBtn, hintBtn);
+        newHintBtn.addEventListener('click', () => {
+            if (monacoEditor) {
+                const code = monacoEditor.getValue();
+                requestHintForEditor(code, screen);
+            } else {
+                requestHint();
+            }
+        });
+    }
+    
+    if (solutionBtn) {
+        const newSolutionBtn = solutionBtn.cloneNode(true);
+        solutionBtn.parentNode.replaceChild(newSolutionBtn, solutionBtn);
+        newSolutionBtn.addEventListener('click', () => {
+            showSolutionForEditor(screen);
+        });
+    }
+}
+
+async function validateCodeForEditor(userCode, screen) {
+    if (!userCode || !userCode.trim()) {
+        const output = document.getElementById('editorOutputContent');
+        if (output) {
+            output.innerHTML = '<span style="color: #f87171;">⚠️ Please write some code first!</span>';
+        }
+        return;
+    }
+    
+    const checkBtn = document.getElementById('checkCodeBtn');
+    if (checkBtn) {
+        checkBtn.disabled = true;
+        checkBtn.textContent = 'Checking...';
+    }
+    
+    showGlobalLoading();
+    
+    try {
+        const response = await fetch('/api/validate-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userCode,
+                tutorial: currentTutorial,
+                atomicTask: currentAtomicTask
+            })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Validation failed');
+        
+        const output = document.getElementById('editorOutputContent');
+        const validation = data.validation;
+        
+        if (output) {
+            if (validation && validation.correct) {
+                output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job! Your code meets all the requirements.</span>';
+                if (currentAtomicTask && !completedTasks.includes(currentAtomicTask)) {
+                    completedTasks.push(currentAtomicTask);
+                }
+                updateEditorProgressIndicator();
+            } else if (validation && validation.feedback && validation.feedback.length > 0) {
+                const feedbackMessages = validation.feedback.map(f => f.message || f).join('\n');
+                output.innerHTML = `<div style="color: #f87171;">
+                    <strong>⚠️ Not quite right. Here's what to improve:</strong><br>
+                    ${feedbackMessages.split('\n').map(msg => `• ${msg}`).join('<br>')}
+                    ${validation.suggestion ? `<br><br><strong>Suggestion:</strong> ${validation.suggestion}` : ''}
+                    ${validation.encouragement ? `<br><br><em>${validation.encouragement}</em>` : ''}
+                </div>`;
+            } else {
+                output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation?.message || 'Not quite right. Keep trying!'}</span>`;
+            }
+        }
+    } catch (error) {
+        console.error('Code validation error:', error);
+        const output = document.getElementById('editorOutputContent');
+        if (output) {
+            output.innerHTML = `<span style="color: #f87171;">Error: ${error.message}</span>`;
+        }
+    } finally {
+        if (checkBtn) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = 'Check Code';
+        }
+        hideGlobalLoading();
+    }
+}
+
+async function requestHintForEditor(userCode, screen) {
+    if (hintCount >= 3) {
+        const output = document.getElementById('editorOutputContent');
+        if (output) {
+            output.innerHTML = '<span style="color: #666;">You\'ve used all 3 hints. Try working through the problem step by step!</span>';
+        }
+        return;
+    }
+    
+    const hintBtn = document.getElementById('showHintBtn');
+    if (hintBtn) {
+        hintBtn.disabled = true;
+        hintBtn.textContent = 'Loading hint...';
+    }
+    
+    showGlobalLoading();
+    
+    try {
+        hintCount++;
+        const response = await fetch('/api/generate-hint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userCode: userCode || '',
+                tutorial: currentTutorial,
+                hintNumber: hintCount,
+                previousHints: previousHints
+            })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to generate hint');
+        
+        previousHints.push(data.hint.hint);
+        showHintForEditor(data.hint);
+        
+    } catch (error) {
+        console.error('Hint error:', error);
+        const output = document.getElementById('editorOutputContent');
+        if (output) {
+            output.innerHTML = `<span style="color: #f87171;">Error: ${error.message}</span>`;
+        }
+    } finally {
+        if (hintBtn) {
+            hintBtn.disabled = false;
+            hintBtn.textContent = hintCount >= 3 ? 'No more hints' : `Hint (${hintCount}/3)`;
+        }
+        hideGlobalLoading();
+    }
+}
+
+function showHintForEditor(hint) {
+    const hintDisplay = document.getElementById('hintDisplay');
+    const output = document.getElementById('editorOutputContent');
+    
+    if (hintDisplay) {
+        hintDisplay.classList.remove('hidden');
+        hintDisplay.innerHTML = `
+            <h4>💡 Hint ${hintCount}/3</h4>
+            <p>${hint.hint}</p>
+        `;
+    }
+    
+    if (output) {
+        output.innerHTML = `<div style="color: #00d4ff;">
+            <strong>💡 Hint ${hintCount}/3:</strong><br>
+            ${hint.hint}
+        </div>`;
+    }
+}
+
+function showSolutionForEditor(screen) {
+    const solutionScreen = currentTutorial.screens?.find(s => s.screenType === 'solution');
+    const output = document.getElementById('editorOutputContent');
+    
+    if (solutionScreen && solutionScreen.content && solutionScreen.content.code) {
+        const solutionCode = solutionScreen.content.code.replace(/\\n/g, '\n');
+        
+        // Update Monaco editor with solution
+        if (monacoEditor) {
+            monacoEditor.setValue(solutionCode);
+        }
+        
+        if (output) {
+            output.innerHTML = '<span style="color: #00d4ff;">📖 Solution loaded into editor. Study it and try to understand each part!</span>';
+        }
+    } else if (output) {
+        output.innerHTML = '<span style="color: #666;">Solution not available for this task.</span>';
+    }
+}
+
 // ============================================================================
 // NAVIGATION
 // ============================================================================
