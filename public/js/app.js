@@ -478,12 +478,75 @@ function displayObjectives(data) {
 // PHASE 2: TASK BREAKDOWN
 // ============================================================================
 
+// Preload task breakdown and tutorials in background
+async function preloadTaskBreakdownAndTutorials() {
+    try {
+        // Get task breakdown
+        const response = await fetch('/api/decompose-task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                task: currentTask, 
+                technology: currentTechnology,
+                breakdown: 'sequential'
+            })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) return; // Silently fail if breakdown fails
+        
+        preloadedTasks = data.tasks;
+        
+        // Preload tutorials for all non-setup tasks
+        const nonSetupTasks = data.tasks.filter(task => !isSetupTask(task));
+        
+        // Preload tutorials in parallel (but limit concurrency to avoid overwhelming server)
+        const preloadPromises = nonSetupTasks.map(async (taskText) => {
+            try {
+                const tutorialResponse = await fetch('/api/generate-tutorial', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        atomicTask: taskText,
+                        projectContext: { task: currentTask, technology: currentTechnology }
+                    })
+                });
+                
+                const tutorialData = await tutorialResponse.json();
+                if (tutorialResponse.ok && tutorialData.tutorial) {
+                    preloadedTutorials[taskText] = tutorialData.tutorial;
+                }
+            } catch (error) {
+                // Silently fail - we'll generate on demand if preload fails
+                console.log('Preload failed for task:', taskText, error);
+            }
+        });
+        
+        // Don't await - let it run in background
+        Promise.all(preloadPromises).then(() => {
+            console.log('Tutorial preloading completed');
+        });
+        
+    } catch (error) {
+        // Silently fail - we'll generate on demand if preload fails
+        console.log('Preload task breakdown failed:', error);
+    }
+}
+
 async function handleStartBuilding() {
     resultsDiv.classList.add('hidden');
     startBuildingBtn.disabled = true;
     showGlobalLoading();
     
     try {
+        // Check if we have preloaded tasks
+        if (preloadedTasks) {
+            displayTaskBreakdown(preloadedTasks);
+            hideGlobalLoading();
+            return;
+        }
+        
+        // Fallback: generate breakdown if not preloaded
         const response = await fetch('/api/decompose-task', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
