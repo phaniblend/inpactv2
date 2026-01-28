@@ -465,6 +465,9 @@ function displayObjectives(data) {
     if (questionBankSection) questionBankSection.classList.add('hidden');
     resultsDiv.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Preload task breakdown and tutorials in the background
+    preloadTaskBreakdownAndTutorials();
 }
 
 // ============================================================================
@@ -603,6 +606,19 @@ async function handleTaskClick(taskText) {
     showGlobalLoading();
     
     try {
+        // Check if tutorial is preloaded
+        if (preloadedTutorials[taskText]) {
+            currentTutorial = preloadedTutorials[taskText];
+            currentScreenIndex = 0;
+            hintCount = 0;
+            previousHints = [];
+            
+            displayTutorial();
+            hideGlobalLoading();
+            return;
+        }
+        
+        // Generate tutorial if not preloaded
         const response = await fetch('/api/generate-tutorial', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
