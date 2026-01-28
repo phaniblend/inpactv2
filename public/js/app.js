@@ -1482,6 +1482,9 @@ async function openOnlineEditor(taskText) {
         if (nextTaskIndex < allTasks.length) {
             taskText = allTasks[nextTaskIndex];
             currentEditorTaskIndex = nextTaskIndex;
+            // Reset tutorial state to force reload of the new task
+            currentTutorial = null;
+            currentAtomicTask = null;
         } else {
             // No non-setup tasks found, show message
             const editorTutorialContent = document.getElementById('editorTutorialContent');
