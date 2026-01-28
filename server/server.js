@@ -23,6 +23,7 @@ import {
 } from './openai-service.js';
 import { getFromCache, saveToCache, getCacheStats } from './cache-service.js';
 import { trackNextTime, getNextTimeCount, generateFingerprint } from './tracking-service.js';
+import { getUserData, saveUserData, addChallenge, completeTask, saveUserCode, getDashboardData } from './user-service.js';
 
 const execAsync = promisify(exec);
 
@@ -182,11 +183,13 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'inpact-session-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
+  name: 'inpact.sid', // Custom session name
   cookie: {
     secure: isProduction && process.env.RAILWAY === 'true', // HTTPS only in production on Railway
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    sameSite: 'lax'
+    sameSite: 'lax',
+    path: '/' // Ensure cookie is available for all paths
   }
 }));
 
@@ -476,7 +479,12 @@ app.get('/api/auth/google', (req, res) => {
   const responseType = 'code';
   
   if (!clientId) {
-    return res.status(500).json({ error: 'Google OAuth not configured' });
+    console.error('GOOGLE_CLIENT_ID is not set in environment variables');
+    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE')));
+    return res.status(500).json({ 
+      error: 'Google OAuth not configured',
+      message: 'GOOGLE_CLIENT_ID environment variable is not set. Please check your .env file and restart the server.'
+    });
   }
   
   // Store the original URL they were trying to access (if any)
@@ -566,11 +574,19 @@ app.get('/api/auth/google/callback', async (req, res) => {
     req.session.authenticated = true;
     
     console.log('User authenticated:', userInfo.email);
+    console.log('Session user:', req.session.user);
     
-    // Redirect to original destination or home
-    const returnTo = req.session.returnTo || '/';
-    delete req.session.returnTo;
-    res.redirect(returnTo);
+    // Save session explicitly before redirect
+    req.session.save((err) => {
+      if (err) {
+        console.error('Error saving session:', err);
+      }
+      
+      // Redirect to original destination or home
+      const returnTo = req.session.returnTo || '/';
+      delete req.session.returnTo;
+      res.redirect(returnTo);
+    });
     
   } catch (error) {
     console.error('OAuth callback error:', error);
@@ -580,9 +596,20 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
 // Check authentication status
 app.get('/api/auth/status', (req, res) => {
+  const isAuthenticated = !!req.session.authenticated;
+  const user = req.session.user || null;
+  
+  console.log('Auth status check:', {
+    authenticated: isAuthenticated,
+    hasUser: !!user,
+    userId: user?.id,
+    userEmail: user?.email,
+    sessionId: req.sessionID
+  });
+  
   res.json({
-    authenticated: !!req.session.authenticated,
-    user: req.session.user || null
+    authenticated: isAuthenticated,
+    user: user
   });
 });
 
@@ -597,6 +624,89 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
+// ============================================================================
+// USER DATA & DASHBOARD ROUTES
+// ============================================================================
+
+// Middleware to check authentication
+function requireAuth(req, res, next) {
+  if (!req.session.authenticated || !req.session.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+}
+
+// Get user dashboard data
+app.get('/api/dashboard', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const dashboardData = await getDashboardData(userId);
+    
+    if (!dashboardData) {
+      return res.status(500).json({ error: 'Failed to load dashboard data' });
+    }
+    
+    res.json({ success: true, ...dashboardData });
+  } catch (error) {
+    console.error('Error getting dashboard data:', error);
+    res.status(500).json({ error: 'Failed to get dashboard data', message: error.message });
+  }
+});
+
+// Add or update challenge
+app.post('/api/user/challenge', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { task, technology, tasks } = req.body;
+    
+    if (!task || !technology) {
+      return res.status(400).json({ error: 'Task and technology are required' });
+    }
+    
+    const challenge = await addChallenge(userId, { task, technology, tasks });
+    res.json({ success: true, challenge });
+  } catch (error) {
+    console.error('Error adding challenge:', error);
+    res.status(500).json({ error: 'Failed to add challenge', message: error.message });
+  }
+});
+
+// Mark task as completed
+app.post('/api/user/complete-task', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { task, challengeTask } = req.body;
+    
+    if (!task || !challengeTask) {
+      return res.status(400).json({ error: 'Task and challengeTask are required' });
+    }
+    
+    const userData = await completeTask(userId, task, challengeTask);
+    res.json({ success: true, userData });
+  } catch (error) {
+    console.error('Error completing task:', error);
+    res.status(500).json({ error: 'Failed to complete task', message: error.message });
+  }
+});
+
+// Save user code
+app.post('/api/user/save-code', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { task, taskText, code } = req.body;
+    
+    if (!task || !taskText || !code) {
+      return res.status(400).json({ error: 'Task, taskText, and code are required' });
+    }
+    
+    const userData = await saveUserCode(userId, task, taskText, code);
+    res.json({ success: true, userData });
+  } catch (error) {
+    console.error('Error saving code:', error);
+    res.status(500).json({ error: 'Failed to save code', message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -605,5 +715,27 @@ app.listen(PORT, () => {
     console.error('⚠️  ANTHROPIC_API_KEY=your_api_key_here');
   } else {
     console.log('✓ Anthropic API key loaded');
+  }
+  
+  // Check Google OAuth configuration
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    console.warn('⚠️  WARNING: GOOGLE_CLIENT_ID not found!');
+    console.warn('⚠️  Google OAuth will not work. Add GOOGLE_CLIENT_ID to your .env file.');
+  } else {
+    console.log('✓ Google OAuth Client ID loaded');
+  }
+  
+  if (!process.env.GOOGLE_CLIENT_SECRET) {
+    console.warn('⚠️  WARNING: GOOGLE_CLIENT_SECRET not found!');
+    console.warn('⚠️  Google OAuth will not work. Add GOOGLE_CLIENT_SECRET to your .env file.');
+  } else {
+    console.log('✓ Google OAuth Client Secret loaded');
+  }
+  
+  if (!process.env.SESSION_SECRET) {
+    console.warn('⚠️  WARNING: SESSION_SECRET not found!');
+    console.warn('⚠️  Using default session secret (not secure for production).');
+  } else {
+    console.log('✓ Session secret loaded');
   }
 });

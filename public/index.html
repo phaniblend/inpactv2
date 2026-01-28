@@ -11,6 +11,34 @@
 </head>
 <body>
     <div class="container">
+        <!-- Navigation Bar -->
+        <nav id="topNav" class="top-nav">
+            <div class="nav-left">
+                <button id="homeBtn" class="nav-link-btn" title="Home">
+                    <span class="nav-icon">🏠</span> Home
+                </button>
+            </div>
+            <div class="nav-center">
+                <div class="logo-mark-small">◆</div>
+                <span class="nav-logo-text">INPACT</span>
+            </div>
+            <div class="nav-right">
+                <div id="userInfo" class="user-info hidden">
+                    <img id="userAvatar" class="user-avatar" src="" alt="User" />
+                    <span id="userName" class="user-name"></span>
+                </div>
+                <button id="loginBtn" class="nav-link-btn" title="Sign in">
+                    <span class="nav-icon">🔐</span> Sign In
+                </button>
+                <button id="dashboardBtn" class="nav-link-btn hidden" title="Dashboard">
+                    <span class="nav-icon">📊</span> Dashboard
+                </button>
+                <button id="logoutBtn" class="nav-link-btn hidden" title="Sign out">
+                    <span class="nav-icon">🚪</span> Sign Out
+                </button>
+            </div>
+        </nav>
+
         <!-- Header -->
         <header id="mainHeader">
             <div class="logo-mark">◆</div>
@@ -161,6 +189,15 @@
                         <div id="editorTutorialContent" class="editor-tutorial-content"></div>
                         <div class="editor-tutorial-navigation">
                             <button id="editorPrevBtn" class="nav-btn">← Previous</button>
+                            <div class="mentor-input-container">
+                                <textarea 
+                                    id="editorMentorQuery" 
+                                    class="mentor-query-input" 
+                                    placeholder="Stuck on something from this screen? Ask your mentor for help! For example: 'What does console.log do?' or 'How do left and right pointers work in binary search?'"
+                                    rows="1"
+                                ></textarea>
+                                <button id="editorAskMentorBtn" class="btn-mentor">Ask Mentor</button>
+                            </div>
                             <button id="editorNextBtn" class="nav-btn">Continue →</button>
                         </div>
                     </div>
@@ -216,6 +253,15 @@
 
                 <div class="step-navigation">
                     <button id="prevStepBtn" class="nav-btn">← Previous</button>
+                    <div class="mentor-input-container">
+                        <textarea 
+                            id="mentorQuery" 
+                            class="mentor-query-input" 
+                            placeholder="Stuck on something from this screen? Ask your mentor for help! For example: 'What does console.log do?' or 'How do left and right pointers work in binary search?'"
+                            rows="1"
+                        ></textarea>
+                        <button id="askMentorBtn" class="btn-mentor">Ask Mentor</button>
+                    </div>
                     <button id="nextStepBtn" class="nav-btn">Continue →</button>
                 </div>
             </div>

@@ -156,6 +156,17 @@ const generateBtn = document.getElementById('generateBtn');
 const mainHeader = document.getElementById('mainHeader');
 const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
 
+// Navigation elements
+const topNav = document.getElementById('topNav');
+const homeBtn = document.getElementById('homeBtn');
+const loginBtn = document.getElementById('loginBtn');
+const dashboardBtn = document.getElementById('dashboardBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const userInfo = document.getElementById('userInfo');
+const userAvatar = document.getElementById('userAvatar');
+const userName = document.getElementById('userName');
+const dashboardView = document.getElementById('dashboardView');
+
 // Auth modal elements
 const authModal = document.getElementById('authModal');
 const googleAuthBtn = document.getElementById('googleAuthBtn');
@@ -389,7 +400,14 @@ nextStepBtn.addEventListener('click', () => navigateScreen(1));
 // Initialize question bank on page load
 document.addEventListener('DOMContentLoaded', () => {
     initQuestionBank();
-    handleURLParameters();
+    
+    // Check auth status first, then handle URL parameters
+    // Add a small delay to ensure session is established after OAuth redirect
+    setTimeout(() => {
+        checkAuthStatus().then(() => {
+            handleURLParameters();
+        });
+    }, 100);
     
     // Auth modal event listeners
     if (googleAuthBtn) {
@@ -398,6 +416,30 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (nextTimeBtn) {
         nextTimeBtn.addEventListener('click', handleNextTime);
+    }
+    
+    // Navigation event listeners
+    if (homeBtn) {
+        homeBtn.addEventListener('click', () => {
+            resetToStart();
+            hideDashboard();
+        });
+    }
+    
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            window.location.href = '/api/auth/google?redirect=' + encodeURIComponent(window.location.href);
+        });
+    }
+    
+    if (dashboardBtn) {
+        dashboardBtn.addEventListener('click', () => {
+            showDashboard();
+        });
+    }
+    
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
     }
     
     // Close modal on overlay click
@@ -425,6 +467,37 @@ function handleURLParameters() {
     if (authError) {
         console.error('Auth error:', authError);
         // Show error message or handle as needed
+    }
+    
+    // After OAuth redirect (when coming back from Google), re-check auth status
+    // This ensures the UI is updated even if the initial check happened too early
+    if (!authError) {
+        // Check if we just came back from OAuth (no auth_error means success)
+        // Clean up URL parameters after handling them
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('auth_error') || url.searchParams.has('redirect')) {
+            // Remove auth-related query parameters
+            url.searchParams.delete('auth_error');
+            url.searchParams.delete('redirect');
+            // Update URL without reload (cleaner UX)
+            window.history.replaceState({}, '', url.pathname + (url.search || ''));
+        }
+        
+        // Re-check auth status multiple times with increasing delays to ensure session is established
+        // This handles cases where the session might take a moment to be available
+        let retryCount = 0;
+        const maxRetries = 3;
+        const checkAuthWithRetry = async () => {
+            const isAuthenticated = await checkAuthStatus();
+            // If still not authenticated after redirect, retry
+            if (retryCount < maxRetries && !isAuthenticated) {
+                retryCount++;
+                console.log(`Retrying auth check (${retryCount}/${maxRetries})...`);
+                setTimeout(checkAuthWithRetry, 200 * retryCount); // Increasing delay: 200ms, 400ms, 600ms
+            }
+        };
+        
+        setTimeout(checkAuthWithRetry, 300);
     }
     
     // Check if there's a pending form submission from before OAuth
@@ -538,25 +611,8 @@ async function showAuthModal() {
     
     authModal.classList.remove('hidden');
     
-    // Check if user should see the message
-    const fingerprint = await getBrowserFingerprint();
-    try {
-        const response = await fetch('/api/get-next-time-count', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fingerprint })
-        });
-        
-        const data = await response.json();
-        if (data.success && data.shouldShowMessage) {
-            showAuthMessage("Sorry friend, you say that all the time... why don't you register if you really like me? 😊");
-        } else {
-            hideAuthMessage();
-        }
-    } catch (error) {
-        console.error('Error checking next time count:', error);
-        hideAuthMessage();
-    }
+    // Don't show the message when modal opens - only show it after they click "next time" multiple times
+    hideAuthMessage();
 }
 
 // Hide auth modal
@@ -801,6 +857,11 @@ async function handleStartBuilding() {
 function displayTaskBreakdown(tasks) {
     tasksList.innerHTML = '';
     allTasks = tasks; // Store tasks for editor view
+    
+    // Track challenge start if user is authenticated
+    if (currentUser && currentTask && currentTechnology) {
+        trackChallengeStart(currentTask, currentTechnology, tasks);
+    }
     
     const section = createTaskSection('Your Learning Roadmap', '🚀', tasks);
     tasksList.appendChild(section);
@@ -1072,25 +1133,9 @@ function renderScreen(index) {
     const stepContent = document.getElementById('stepContent');
     let screenHTML = getScreenHTML(screen);
     
-    // Add mentor section
-    screenHTML += `
-        <div class="mentor-section">
-            <div class="mentor-query-container">
-                <textarea 
-                    id="mentorQuery" 
-                    class="mentor-query-input" 
-                    placeholder="Confused about something? Ask your mentor..."
-                    rows="2"
-                ></textarea>
-                <button id="askMentorBtn" class="btn-mentor">Ask Mentor</button>
-            </div>
-            <div id="mentorResponse" class="mentor-response hidden"></div>
-        </div>
-    `;
-    
     stepContent.innerHTML = screenHTML;
     
-    // Setup mentor button
+    // Setup mentor button (now in navigation)
     const askMentorBtn = document.getElementById('askMentorBtn');
     if (askMentorBtn) {
         askMentorBtn.addEventListener('click', () => askMentor(screen));
@@ -1463,6 +1508,10 @@ async function validateCodeForEditor(userCode, screen) {
                 output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job! Your code meets all the requirements.</span>';
                 if (currentAtomicTask && !completedTasks.includes(currentAtomicTask)) {
                     completedTasks.push(currentAtomicTask);
+                    // Track task completion if user is authenticated
+                    if (currentUser && currentTask && currentAtomicTask) {
+                        trackTaskCompletion(currentTask, currentAtomicTask);
+                    }
                 }
                 updateEditorProgressIndicator();
             } else if (validation && validation.feedback && validation.feedback.length > 0) {
@@ -1606,6 +1655,10 @@ function navigateScreen(direction) {
     if (newIndex >= screens.length) {
         if (!completedTasks.includes(currentAtomicTask)) {
             completedTasks.push(currentAtomicTask);
+            // Track task completion if user is authenticated
+            if (currentUser && currentTask && currentAtomicTask) {
+                trackTaskCompletion(currentTask, currentAtomicTask);
+            }
         }
         setTimeout(() => {
         showTaskBreakdown();
@@ -2033,6 +2086,288 @@ function displayError(message) {
     errorDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ============================================================================
+// AUTHENTICATION & USER MANAGEMENT
+// ============================================================================
+
+let currentUser = null;
+
+// Check authentication status
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/auth/status', {
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            console.error('Auth status check failed:', response.status, response.statusText);
+            updateNavigationForAuth(false, null);
+            return false;
+        }
+        
+        const data = await response.json();
+        console.log('Auth status response:', data);
+        
+        if (data.authenticated && data.user) {
+            currentUser = data.user;
+            updateNavigationForAuth(true, data.user);
+            console.log('User authenticated:', data.user.name || data.user.email);
+            return true;
+        } else {
+            currentUser = null;
+            updateNavigationForAuth(false, null);
+            console.log('User not authenticated');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        updateNavigationForAuth(false, null);
+        return false;
+    }
+}
+
+// Update navigation based on auth status
+function updateNavigationForAuth(isAuthenticated, user) {
+    console.log('Updating navigation for auth:', { isAuthenticated, user: user ? { name: user.name, email: user.email } : null });
+    
+    if (loginBtn) {
+        loginBtn.classList.toggle('hidden', isAuthenticated);
+        console.log('Login button hidden:', isAuthenticated);
+    }
+    if (dashboardBtn) {
+        dashboardBtn.classList.toggle('hidden', !isAuthenticated);
+        console.log('Dashboard button hidden:', !isAuthenticated);
+    }
+    if (logoutBtn) {
+        logoutBtn.classList.toggle('hidden', !isAuthenticated);
+        console.log('Logout button hidden:', !isAuthenticated);
+    }
+    if (userInfo) {
+        userInfo.classList.toggle('hidden', !isAuthenticated);
+        console.log('User info hidden:', !isAuthenticated);
+    }
+    
+    if (isAuthenticated && user) {
+        if (userAvatar && user.picture) {
+            userAvatar.src = user.picture;
+            userAvatar.alt = user.name || 'User';
+            console.log('User avatar set:', user.picture);
+        }
+        if (userName) {
+            userName.textContent = user.name || user.email || 'User';
+            console.log('User name set:', user.name || user.email);
+        }
+    }
+}
+
+// Handle logout
+async function handleLogout() {
+    try {
+        const response = await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            currentUser = null;
+            updateNavigationForAuth(false, null);
+            // Reload page to reset state
+            window.location.href = '/';
+        }
+    } catch (error) {
+        console.error('Error logging out:', error);
+    }
+}
+
+// Show dashboard
+async function showDashboard() {
+    if (!currentUser) {
+        // Not authenticated, redirect to login
+        window.location.href = '/api/auth/google?redirect=' + encodeURIComponent('/');
+        return;
+    }
+    
+    hideAll();
+    if (dashboardView) dashboardView.classList.remove('hidden');
+    
+    showGlobalLoading();
+    
+    try {
+        const response = await fetch('/api/dashboard', {
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            displayDashboard(data);
+        } else {
+            displayError('Failed to load dashboard');
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        displayError('Failed to load dashboard');
+    } finally {
+        hideGlobalLoading();
+    }
+}
+
+// Hide dashboard
+function hideDashboard() {
+    if (dashboardView) dashboardView.classList.add('hidden');
+}
+
+// Display dashboard data
+function displayDashboard(data) {
+    const { stats, recentActivity, continueLearning, completedChallenges } = data;
+    
+    // Update stats
+    if (document.getElementById('totalCompleted')) {
+        document.getElementById('totalCompleted').textContent = stats.totalCompleted;
+    }
+    if (document.getElementById('totalInProgress')) {
+        document.getElementById('totalInProgress').textContent = stats.totalInProgress;
+    }
+    if (document.getElementById('totalChallenges')) {
+        document.getElementById('totalChallenges').textContent = stats.totalChallenges;
+    }
+    
+    // Display recent activity
+    const recentActivityEl = document.getElementById('recentActivity');
+    if (recentActivityEl) {
+        if (recentActivity.length === 0) {
+            recentActivityEl.innerHTML = '<p class="empty-state">No recent activity yet. Start a challenge to see your progress here!</p>';
+        } else {
+            recentActivityEl.innerHTML = recentActivity.map(activity => `
+                <div class="activity-item" onclick="continueChallenge('${escapeHtml(activity.task)}', '${escapeHtml(activity.technology)}')">
+                    <div class="activity-item-header">
+                        <div class="activity-item-title">${escapeHtml(activity.task)}</div>
+                        <div class="activity-item-time">${formatTimeAgo(activity.lastActive)}</div>
+                    </div>
+                    <div class="activity-item-description">
+                        ${escapeHtml(activity.technology)} • ${activity.completedTasks}/${activity.totalTasks} tasks completed
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" style="width: ${activity.progress}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // Display continue learning
+    const continueLearningEl = document.getElementById('continueLearning');
+    if (continueLearningEl) {
+        if (continueLearning.length === 0) {
+            continueLearningEl.innerHTML = '<p class="empty-state">No active challenges. Start a new one to begin learning!</p>';
+        } else {
+            continueLearningEl.innerHTML = continueLearning.map(challenge => `
+                <div class="continue-item" onclick="continueChallenge('${escapeHtml(challenge.task)}', '${escapeHtml(challenge.technology)}')">
+                    <div class="continue-item-header">
+                        <div class="continue-item-title">${escapeHtml(challenge.task)}</div>
+                        <div class="continue-item-progress">${Math.round(challenge.progress)}% complete</div>
+                    </div>
+                    <div class="continue-item-description">
+                        ${escapeHtml(challenge.technology)} • ${challenge.completedTasks}/${challenge.totalTasks} tasks completed
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" style="width: ${challenge.progress}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // Display completed challenges
+    const completedChallengesEl = document.getElementById('completedChallenges');
+    if (completedChallengesEl) {
+        if (completedChallenges.length === 0) {
+            completedChallengesEl.innerHTML = '<p class="empty-state">No completed challenges yet. Complete your first challenge to see it here!</p>';
+        } else {
+            completedChallengesEl.innerHTML = completedChallenges.map(challenge => `
+                <div class="challenge-item">
+                    <div class="challenge-item-header">
+                        <div class="challenge-item-title">${escapeHtml(challenge.task)}</div>
+                        <div class="challenge-item-date">Completed ${formatTimeAgo(challenge.completedAt)}</div>
+                    </div>
+                    <div class="activity-item-description">
+                        ${escapeHtml(challenge.technology)} • ${challenge.totalTasks} tasks completed
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// Format time ago
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+}
+
+// Continue a challenge (global function for onclick)
+window.continueChallenge = async function(task, technology) {
+    // Set form values
+    if (taskInput) taskInput.value = task;
+    if (technologyInput) technologyInput.value = technology;
+    
+    // Hide dashboard
+    hideDashboard();
+    
+    // Submit form to continue
+    if (form) {
+        const submitEvent = new Event('submit', { cancelable: true, bubbles: true });
+        form.dispatchEvent(submitEvent);
+    }
+};
+
+// Track challenge start (call when user starts a challenge)
+async function trackChallengeStart(task, technology, tasks) {
+    if (!currentUser) return; // Only track if authenticated
+    
+    try {
+        await fetch('/api/user/challenge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ task, technology, tasks })
+        });
+    } catch (error) {
+        console.error('Error tracking challenge start:', error);
+        // Don't block user flow if tracking fails
+    }
+}
+
+// Track task completion (call when user completes a task)
+async function trackTaskCompletion(task, challengeTask) {
+    if (!currentUser) return; // Only track if authenticated
+    
+    try {
+        await fetch('/api/user/complete-task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ task, challengeTask })
+        });
+    } catch (error) {
+        console.error('Error tracking task completion:', error);
+        // Don't block user flow if tracking fails
+    }
+}
+
 function resetToStart() {
     showGlobalLoading();
     hideAll();
@@ -2058,6 +2393,7 @@ function hideAll() {
     errorDiv.classList.add('hidden');
     breakdownResults.classList.add('hidden');
     tutorialView.classList.add('hidden');
+    hideDashboard();
     const onlineEditorView = document.getElementById('onlineEditorView');
     if (onlineEditorView) onlineEditorView.classList.add('hidden');
 }
@@ -2290,22 +2626,6 @@ function updateEditorView() {
             try {
                 let screenHTML = getScreenHTML(screen, true); // true = isEditorView
                 if (screenHTML && screenHTML.trim()) {
-                    // Add mentor section for editor view
-                    screenHTML += `
-                        <div class="mentor-section">
-                            <div class="mentor-query-container">
-                                <textarea 
-                                    id="editorMentorQuery" 
-                                    class="mentor-query-input" 
-                                    placeholder="Stuck on something from this screen? Ask your mentor for help! For example: 'What does console.log do?' or 'How do left and right pointers work in binary search?'"
-                                    rows="3"
-                                ></textarea>
-                                <button id="editorAskMentorBtn" class="btn-mentor">Ask Mentor</button>
-                            </div>
-                            <div id="editorMentorResponse" class="mentor-response hidden"></div>
-                        </div>
-                    `;
-                    
                     editorTutorialContent.innerHTML = screenHTML;
                     
                     // Setup practice screen buttons if this is an implementation screen
@@ -2885,6 +3205,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // If on last screen, mark as complete and go to next task or roadmap
                 if (currentAtomicTask && !completedTasks.includes(currentAtomicTask)) {
                     completedTasks.push(currentAtomicTask);
+                    // Track task completion if user is authenticated
+                    if (currentUser && currentTask && currentAtomicTask) {
+                        trackTaskCompletion(currentTask, currentAtomicTask);
+                    }
                 }
                 updateEditorProgressIndicator();
                 
@@ -3059,6 +3383,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job! Your code meets all the requirements.</span>';
                         if (currentTask && !completedTasks.includes(currentTask)) {
                             completedTasks.push(currentTask);
+                            // Track task completion if user is authenticated
+                            if (currentUser && currentTask && currentAtomicTask) {
+                                trackTaskCompletion(currentTask, currentAtomicTask);
+                            }
                         }
                         updateEditorProgressIndicator();
                     } else if (validation && validation.feedback && validation.feedback.length > 0) {
