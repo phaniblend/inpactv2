@@ -670,7 +670,7 @@ function displaySetupTask(taskText) {
                         <div class="setup-option-icon">📺</div>
                         <div class="setup-option-content">
                             <h4>Setup your own environment</h4>
-                            <p>Ok, lemme check the video and setup my own env setup...</p>
+                            <p>Watch the tutorial and set up your local environment. This gives you full control over your development setup and helps you learn the fundamentals.</p>
                             <a href="${setupInfo.youtubeLink}" target="_blank" rel="noopener noreferrer" class="setup-option-link">
                                 ▶ Watch setup tutorials on YouTube
                             </a>
