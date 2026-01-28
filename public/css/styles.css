@@ -1622,6 +1622,17 @@ footer {
     flex-direction: column;
     overflow: hidden;
     position: relative;
+    transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.editor-code-pane.hidden {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.editor-layout.editor-full-width .editor-tutorial-pane {
+    width: 100%;
 }
 
 .editor-tutorial-header {
@@ -1631,6 +1642,31 @@ footer {
     margin-bottom: 32px;
     padding-bottom: 24px;
     border-bottom: 1px solid rgba(30, 42, 58, 0.1);
+    justify-content: space-between;
+}
+
+.toggle-editor-btn {
+    padding: 8px 16px;
+    background: rgba(30, 42, 58, 0.1);
+    color: var(--text);
+    border: 1px solid rgba(30, 42, 58, 0.2);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.toggle-editor-btn:hover {
+    background: rgba(30, 42, 58, 0.15);
+    border-color: rgba(30, 42, 58, 0.3);
+}
+
+.toggle-editor-btn.active {
+    background: var(--neon);
+    color: var(--navy-dark);
+    border-color: var(--neon);
 }
 
 .editor-tutorial-header h2 {
