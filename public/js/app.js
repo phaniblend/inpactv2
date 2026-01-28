@@ -1479,7 +1479,6 @@ async function openOnlineEditor(taskText) {
     updateEditorView();
     updateEditorProgressIndicator();
     updateEditorCode();
-    updateProgressCodeView();
 }
 
 async function initializeMonacoEditor() {
