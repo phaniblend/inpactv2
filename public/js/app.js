@@ -1976,12 +1976,49 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (checkCodeEditorBtn) {
         checkCodeEditorBtn.addEventListener('click', async () => {
-            if (!monacoEditor) return;
+            if (!monacoEditor) {
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    output.innerHTML = '<span style="color: #f87171;">Error: Editor not initialized</span>';
+                }
+                return;
+            }
             
-            const code = monacoEditor.getValue();
-            studentCodeByTask[allTasks[currentEditorTaskIndex]] = code;
+            const code = monacoEditor.getValue().trim();
+            if (!code) {
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    output.innerHTML = '<span style="color: #f87171;">⚠️ Please write some code first!</span>';
+                }
+                return;
+            }
+            
+            // Save student code
+            const currentTask = allTasks[currentEditorTaskIndex];
+            if (currentTask) {
+                studentCodeByTask[currentTask] = code;
+            }
+            
+            // Check if tutorial is loaded
+            if (!currentTutorial) {
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    output.innerHTML = '<span style="color: #f87171;">Error: Tutorial not loaded. Please wait...</span>';
+                }
+                return;
+            }
+            
+            // Update button state
+            checkCodeEditorBtn.disabled = true;
+            checkCodeEditorBtn.textContent = 'Checking...';
+            
+            const output = document.getElementById('editorOutputContent');
+            if (output) {
+                output.textContent = 'Checking your code against the task requirements...';
+            }
             
             showGlobalLoading();
+            
             try {
                 const response = await fetch('/api/validate-code', {
                     method: 'POST',
@@ -1989,32 +2026,54 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         userCode: code,
                         tutorial: currentTutorial,
-                        atomicTask: allTasks[currentEditorTaskIndex]
+                        atomicTask: currentTask || allTasks[currentEditorTaskIndex]
                     })
                 });
                 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Validation failed');
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                let data;
                 
-                const output = document.getElementById('editorOutputContent');
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Validation failed');
+                }
+                
                 if (output) {
                     const validation = data.validation;
-                    if (validation.correct) {
-                        output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job!</span>';
-                        if (!completedTasks.includes(allTasks[currentEditorTaskIndex])) {
-                            completedTasks.push(allTasks[currentEditorTaskIndex]);
+                    if (validation && validation.correct) {
+                        output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job! Your code meets all the requirements.</span>';
+                        if (currentTask && !completedTasks.includes(currentTask)) {
+                            completedTasks.push(currentTask);
                         }
                         updateEditorProgressIndicator();
+                    } else if (validation && validation.feedback && validation.feedback.length > 0) {
+                        // Show detailed feedback
+                        const feedbackMessages = validation.feedback.map(f => f.message || f).join('\n');
+                        output.innerHTML = `<div style="color: #f87171;">
+                            <strong>⚠️ Not quite right. Here's what to improve:</strong><br>
+                            ${feedbackMessages.split('\n').map(msg => `• ${msg}`).join('<br>')}
+                            ${validation.suggestion ? `<br><br><strong>Suggestion:</strong> ${validation.suggestion}` : ''}
+                            ${validation.encouragement ? `<br><br><em>${validation.encouragement}</em>` : ''}
+                        </div>`;
                     } else {
-                        output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation.feedback?.[0]?.message || 'Not quite right. Keep trying!'}</span>`;
+                        output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation?.message || 'Not quite right. Keep trying!'}</span>`;
                     }
                 }
             } catch (error) {
-                const output = document.getElementById('editorOutputContent');
+                console.error('Code validation error:', error);
                 if (output) {
-                    output.textContent = `Error: ${error.message}`;
+                    output.innerHTML = `<span style="color: #f87171;">Error: ${error.message}</span>`;
                 }
             } finally {
+                checkCodeEditorBtn.disabled = false;
+                checkCodeEditorBtn.textContent = 'Check Code';
                 hideGlobalLoading();
             }
         });
