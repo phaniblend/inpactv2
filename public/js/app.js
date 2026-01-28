@@ -2722,4 +2722,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // Setup mentor modal close button
+    const closeMentorModal = document.getElementById('closeMentorModal');
+    const mentorModal = document.getElementById('mentorModal');
+    if (closeMentorModal && mentorModal) {
+        closeMentorModal.addEventListener('click', () => {
+            mentorModal.classList.add('hidden');
+        });
+        
+        // Close modal when clicking overlay
+        const overlay = mentorModal.querySelector('.mentor-modal-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                mentorModal.classList.add('hidden');
+            });
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !mentorModal.classList.contains('hidden')) {
+                mentorModal.classList.add('hidden');
+            }
+        });
+    }
 });
