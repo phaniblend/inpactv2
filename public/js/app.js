@@ -725,7 +725,26 @@ function displaySetupTask(taskText) {
     // Add event listener for online editor button
     const useOnlineEditorBtn = document.getElementById('useOnlineEditorBtn');
     if (useOnlineEditorBtn) {
-        useOnlineEditorBtn.onclick = () => openOnlineEditor(taskText);
+        useOnlineEditorBtn.onclick = () => {
+            // Find first non-setup task (Task 2+)
+            let firstCodingTask = null;
+            let firstCodingTaskIndex = -1;
+            
+            for (let i = 0; i < allTasks.length; i++) {
+                if (!isSetupTask(allTasks[i])) {
+                    firstCodingTask = allTasks[i];
+                    firstCodingTaskIndex = i;
+                    break;
+                }
+            }
+            
+            if (firstCodingTask) {
+                openOnlineEditor(firstCodingTask);
+            } else {
+                // No coding tasks found, show error
+                alert('No coding tasks available. Please complete setup first.');
+            }
+        };
     }
     
     document.querySelector('.step-navigation').style.display = 'flex';
