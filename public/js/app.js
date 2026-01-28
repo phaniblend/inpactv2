@@ -1484,6 +1484,13 @@ async function openOnlineEditor(taskText) {
         }
     }
     
+    // Ensure screen index is properly initialized
+    if (!currentTutorial || !currentTutorial.screens || currentTutorial.screens.length === 0) {
+        // Tutorial not loaded yet, will be updated when loaded
+    } else if (currentScreenIndex < 0 || currentScreenIndex >= currentTutorial.screens.length) {
+        currentScreenIndex = 0;
+    }
+    
     // Update editor view
     updateEditorView();
     updateEditorProgressIndicator();
