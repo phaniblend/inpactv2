@@ -1543,6 +1543,8 @@ function updateEditorView() {
     const editorTutorialContent = document.getElementById('editorTutorialContent');
     const editorCodeTitle = document.getElementById('editorCodeTitle');
     const editorLanguage = document.getElementById('editorLanguage');
+    const editorPrevBtn = document.getElementById('editorPrevBtn');
+    const editorNextBtn = document.getElementById('editorNextBtn');
     
     if (editorTutorialTitle) {
         editorTutorialTitle.textContent = currentAtomicTask || 'Tutorial';
@@ -1557,11 +1559,32 @@ function updateEditorView() {
     }
     
     // Render current tutorial screen
-    if (currentTutorial && currentTutorial.screens) {
+    if (currentTutorial && currentTutorial.screens && currentTutorial.screens.length > 0) {
         const screen = currentTutorial.screens[currentScreenIndex];
         if (screen && editorTutorialContent) {
             editorTutorialContent.innerHTML = getScreenHTML(screen);
+        } else if (editorTutorialContent) {
+            // If screen not found, show first screen
+            const firstScreen = currentTutorial.screens[0];
+            if (firstScreen) {
+                currentScreenIndex = 0;
+                editorTutorialContent.innerHTML = getScreenHTML(firstScreen);
+            }
         }
+        
+        // Update navigation buttons
+        if (editorPrevBtn) {
+            editorPrevBtn.disabled = currentScreenIndex === 0;
+            editorPrevBtn.style.opacity = currentScreenIndex === 0 ? '0.5' : '1';
+        }
+        
+        if (editorNextBtn) {
+            const isLastScreen = currentScreenIndex >= currentTutorial.screens.length - 1;
+            editorNextBtn.textContent = isLastScreen ? 'Complete →' : 'Continue →';
+        }
+    } else if (editorTutorialContent) {
+        // Show loading or placeholder if tutorial not loaded
+        editorTutorialContent.innerHTML = '<p style="color: #666; padding: 20px;">Loading tutorial content...</p>';
     }
 }
 
@@ -1889,19 +1912,42 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (editorPrevBtn) {
         editorPrevBtn.addEventListener('click', () => {
+            if (!currentTutorial || !currentTutorial.screens) return;
+            
             if (currentScreenIndex > 0) {
                 currentScreenIndex--;
                 updateEditorView();
+            } else {
+                // If on first screen, go back to roadmap
+                const onlineEditorView = document.getElementById('onlineEditorView');
+                if (onlineEditorView) onlineEditorView.classList.add('hidden');
+                showTaskBreakdown();
             }
         });
     }
     
     if (editorNextBtn) {
         editorNextBtn.addEventListener('click', () => {
-            if (currentTutorial && currentTutorial.screens) {
-                if (currentScreenIndex < currentTutorial.screens.length - 1) {
-                    currentScreenIndex++;
-                    updateEditorView();
+            if (!currentTutorial || !currentTutorial.screens) return;
+            
+            if (currentScreenIndex < currentTutorial.screens.length - 1) {
+                currentScreenIndex++;
+                updateEditorView();
+            } else {
+                // If on last screen, mark as complete and go to next task or roadmap
+                if (currentAtomicTask && !completedTasks.includes(currentAtomicTask)) {
+                    completedTasks.push(currentAtomicTask);
+                }
+                updateEditorProgressIndicator();
+                
+                // Go to next task or back to roadmap
+                const nextTaskIndex = currentEditorTaskIndex + 1;
+                if (nextTaskIndex < allTasks.length) {
+                    switchToTask(nextTaskIndex);
+                } else {
+                    const onlineEditorView = document.getElementById('onlineEditorView');
+                    if (onlineEditorView) onlineEditorView.classList.add('hidden');
+                    showTaskBreakdown();
                 }
             }
         });
