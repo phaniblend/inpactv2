@@ -583,6 +583,9 @@ function displayTaskBreakdown(tasks) {
     form.classList.add('hidden');
     if (questionBankSection) questionBankSection.classList.add('hidden');
     breakdownResults.classList.remove('hidden');
+    // Show floating editor button when roadmap is visible
+    const floatingEditorBtn = document.getElementById('floatingEditorBtn');
+    if (floatingEditorBtn) floatingEditorBtn.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -669,48 +672,8 @@ async function handleTaskClick(taskText) {
         return;
     }
     
-    breakdownResults.classList.add('hidden');
-    showGlobalLoading();
-    
-    try {
-        // Check if tutorial is preloaded
-        if (preloadedTutorials[taskText]) {
-            currentTutorial = preloadedTutorials[taskText];
-            currentScreenIndex = 0;
-            hintCount = 0;
-            previousHints = [];
-            
-            displayTutorial();
-            hideGlobalLoading();
-            return;
-        }
-        
-        // Generate tutorial if not preloaded
-        const response = await fetch('/api/generate-tutorial', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                atomicTask: taskText,
-                projectContext: { task: currentTask, technology: currentTechnology }
-            })
-        });
-        
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to generate tutorial');
-        
-        currentTutorial = data.tutorial;
-        currentScreenIndex = 0;
-        hintCount = 0;
-        previousHints = [];
-        
-        displayTutorial();
-        
-    } catch (error) {
-        displayError(error.message);
-        breakdownResults.classList.remove('hidden');
-    } finally {
-        hideGlobalLoading();
-    }
+    // Open in editor view (split screen) instead of tutorial view
+    await openOnlineEditor(taskText);
 }
 
 // ============================================================================
@@ -1431,6 +1394,10 @@ function showTaskBreakdown() {
     if (questionBankSection) questionBankSection.classList.add('hidden');
     breakdownResults.classList.remove('hidden');
     
+    // Show floating editor button when roadmap is visible
+    const floatingEditorBtn = document.getElementById('floatingEditorBtn');
+    if (floatingEditorBtn) floatingEditorBtn.classList.remove('hidden');
+    
     refreshTaskList();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => hideGlobalLoading(), 50);
@@ -1868,6 +1835,10 @@ async function openOnlineEditor(taskText) {
     // Hide tutorial view and breakdown view, show editor view
     tutorialView.classList.add('hidden');
     breakdownResults.classList.add('hidden');
+    // Hide floating editor button when editor view is shown
+    const floatingEditorBtn = document.getElementById('floatingEditorBtn');
+    if (floatingEditorBtn) floatingEditorBtn.classList.add('hidden');
+    
     const onlineEditorView = document.getElementById('onlineEditorView');
     if (!onlineEditorView) return;
     
@@ -2562,7 +2533,10 @@ document.addEventListener('DOMContentLoaded', () => {
         backFromEditorBtn.addEventListener('click', () => {
             const onlineEditorView = document.getElementById('onlineEditorView');
             if (onlineEditorView) onlineEditorView.classList.add('hidden');
-            tutorialView.classList.remove('hidden');
+            // Show floating button again when returning to roadmap
+            const floatingEditorBtn = document.getElementById('floatingEditorBtn');
+            if (floatingEditorBtn) floatingEditorBtn.classList.remove('hidden');
+            showTaskBreakdown();
         });
     }
     
