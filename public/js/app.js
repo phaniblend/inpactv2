@@ -1710,73 +1710,94 @@ function getBoilerplateCode(technology) {
     const techLower = tech.toLowerCase();
     
     if (techLower.includes('javascript') || techLower === 'js') {
-        return `// Welcome! Your environment is ready to go.
-// Start coding your solution below:
+        return `// Welcome! Your JavaScript environment is ready.
+// You can use all standard JavaScript features and Node.js APIs.
 
+// Start coding your solution below:
 function solution() {
     // Your code here
     return null;
 }
 
 // Test your code
-console.log(solution());
+console.log("Running your code...");
+console.log("Result:", solution());
 
 // Example: Try running this
 console.log("Hello, World!");`;
     } else if (techLower.includes('typescript') || techLower === 'ts') {
         return `// Welcome! Your TypeScript environment is ready.
-// Start coding your solution below:
+// TypeScript is compiled to JavaScript automatically.
 
+// Start coding your solution below:
 function solution(): any {
     // Your code here
     return null;
 }
 
 // Test your code
-console.log(solution());
+console.log("Running your code...");
+console.log("Result:", solution());
 
 // Example: Try running this
 console.log("Hello, World!");`;
     } else if (techLower.includes('react')) {
-        return `// Welcome! Your React environment is ready.
-// Start coding your component below:
+        return `// Welcome! Your React + Vite environment is ready.
+// This is a complete React app setup - you can import components, use hooks, etc.
 
-import React from 'react';
+import React, { useState } from 'react';
 
 function App() {
+    const [count, setCount] = useState(0);
+    
     return (
-        <div>
-            <h1>Hello, World!</h1>
+        <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+            <h1>Hello, React!</h1>
+            <p>Count: {count}</p>
+            <button onClick={() => setCount(count + 1)}>
+                Click me
+            </button>
             {/* Your code here */}
         </div>
     );
 }
 
-export default App;`;
+export default App;
+
+// Note: This runs in a React environment with Vite.
+// You can use all React features: hooks, components, JSX, etc.`;
     } else if (techLower.includes('node') || techLower.includes('nodejs')) {
         return `// Welcome! Your Node.js environment is ready.
-// Start coding your solution below:
+// You have access to Node.js built-in modules (fs, path, http, etc.)
 
+// Start coding your solution below:
 function solution() {
     // Your code here
     return null;
 }
 
 // Test your code
-console.log(solution());
+console.log("Running your code...");
+console.log("Result:", solution());
 
 // Example: Try running this
-console.log("Hello, World!");`;
+console.log("Hello, World!");
+
+// You can use Node.js modules:
+// const fs = require('fs');
+// const path = require('path');`;
     } else if (techLower.includes('python')) {
         return `# Welcome! Your Python environment is ready.
-# Start coding your solution below:
+# You can use all standard Python libraries.
 
+# Start coding your solution below:
 def solution():
     # Your code here
     return None
 
 # Test your code
-print(solution())
+print("Running your code...")
+print("Result:", solution())
 
 # Example: Try running this
 print("Hello, World!")`;
@@ -1791,7 +1812,8 @@ function solution() {
 }
 
 // Test your code
-console.log(solution());`;
+console.log("Running your code...");
+console.log("Result:", solution());`;
     }
 }
 
@@ -1874,14 +1896,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (runCodeBtn) {
-        runCodeBtn.addEventListener('click', () => {
-            if (monacoEditor) {
-                const code = monacoEditor.getValue();
-                // For now, just show a message (actual code execution would need a backend)
-                const output = document.getElementById('editorOutputContent');
+        runCodeBtn.addEventListener('click', async () => {
+            if (!monacoEditor) return;
+            
+            const code = monacoEditor.getValue();
+            const output = document.getElementById('editorOutputContent');
+            const runBtn = document.getElementById('runCodeBtn');
+            
+            if (!code.trim()) {
                 if (output) {
-                    output.textContent = 'Code execution requires a backend service. This is a placeholder.';
+                    output.textContent = 'Please write some code first!';
                 }
+                return;
+            }
+            
+            if (runBtn) {
+                runBtn.disabled = true;
+                runBtn.textContent = 'Running...';
+            }
+            
+            if (output) {
+                output.textContent = 'Running your code...';
+            }
+            
+            showGlobalLoading();
+            
+            try {
+                const response = await fetch('/api/run-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        language: currentTechnology || 'JavaScript'
+                    })
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Code execution failed');
+                
+                if (output) {
+                    if (data.output) {
+                        output.textContent = data.output;
+                    } else if (data.error) {
+                        output.innerHTML = `<span style="color: #f87171;">Error: ${data.error}</span>`;
+                    } else {
+                        output.textContent = 'Code executed successfully (no output)';
+                    }
+                }
+            } catch (error) {
+                if (output) {
+                    output.innerHTML = `<span style="color: #f87171;">Error: ${error.message}</span>`;
+                }
+            } finally {
+                if (runBtn) {
+                    runBtn.disabled = false;
+                    runBtn.textContent = '► Run Code';
+                }
+                hideGlobalLoading();
             }
         });
     }
