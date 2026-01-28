@@ -910,16 +910,35 @@ function getScreenHTML(screen) {
                     </div>
                     <h2 class="screen-title">${screen.title || 'Function Signature'}</h2>
                     <div class="screen-body">
+                        <p class="instruction-text" style="margin-bottom: 20px; font-size: 1rem; line-height: 1.6; color: #333;">
+                            <strong>Let's start creating the function!</strong> Here's the function signature you'll be working with. 
+                            This shows you the function name, what parameters it takes, and what it should return. 
+                            Don't worry about the implementation yet - we'll build that step by step together.
+                        </p>
                         <pre class="code-block"><code>${escapeHtml(content.code || '')}</code></pre>
                         ${content.parameters ? `
                             <div class="parameters-list">
                                 <h4>Parameters</h4>
+                                <p style="font-size: 0.9rem; color: #666; margin-bottom: 12px;">
+                                    These are the inputs your function will receive:
+                                </p>
                                 <ul>
                                     ${content.parameters.map(p => `<li><code>${p.name}</code> — ${p.description}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
-                        ${content.returns ? `<p class="returns-text"><strong>Returns:</strong> ${content.returns}</p>` : ''}
+                        ${content.returns ? `
+                            <div class="returns-section" style="margin-top: 20px;">
+                                <p class="returns-text"><strong>Returns:</strong> ${content.returns}</p>
+                                <p style="font-size: 0.9rem; color: #666; margin-top: 8px;">
+                                    This is what your function should give back when it's done.
+                                </p>
+                            </div>
+                        ` : ''}
+                        <p class="instruction-text" style="margin-top: 24px; padding: 16px; background: rgba(0, 212, 255, 0.1); border-radius: 8px; border-left: 3px solid #00d4ff; font-size: 0.95rem; color: #333;">
+                            <strong>What's next?</strong> We'll walk through building this function together. 
+                            Click "Continue" to see how we approach solving this step by step!
+                        </p>
                     </div>
                 </div>
             `;
