@@ -2340,6 +2340,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    const toggleEditorBtn = document.getElementById('toggleEditorBtn');
+    if (toggleEditorBtn) {
+        let isEditorVisible = true;
+        toggleEditorBtn.addEventListener('click', () => {
+            isEditorVisible = !isEditorVisible;
+            const editorCodePane = document.querySelector('.editor-code-pane');
+            const editorLayout = document.querySelector('.editor-layout');
+            
+            if (isEditorVisible) {
+                // Show editor
+                if (editorCodePane) editorCodePane.classList.remove('hidden');
+                if (editorLayout) editorLayout.classList.remove('editor-full-width');
+                toggleEditorBtn.textContent = '💻 Hide Editor';
+                toggleEditorBtn.classList.add('active');
+            } else {
+                // Hide editor
+                if (editorCodePane) editorCodePane.classList.add('hidden');
+                if (editorLayout) editorLayout.classList.add('editor-full-width');
+                toggleEditorBtn.textContent = '💻 Show Editor';
+                toggleEditorBtn.classList.remove('active');
+            }
+        });
+    }
+    
     if (editorPrevBtn) {
         editorPrevBtn.addEventListener('click', () => {
             if (!currentTutorial || !currentTutorial.screens) return;
