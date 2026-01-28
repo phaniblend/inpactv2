@@ -1396,21 +1396,35 @@ function showObjectives() {
 
 async function askMentor(screen) {
     const queryInput = document.getElementById('mentorQuery');
-    const responseDiv = document.getElementById('mentorResponse');
     const askBtn = document.getElementById('askMentorBtn');
+    const mentorModal = document.getElementById('mentorModal');
+    const mentorModalBody = document.getElementById('mentorModalBody');
     
-    const question = queryInput.value.trim();
+    const question = queryInput ? queryInput.value.trim() : '';
     
     if (!question) {
-        responseDiv.innerHTML = '<p class="mentor-error">Please type a question first.</p>';
-        responseDiv.classList.remove('hidden');
+        // Show error in modal
+        if (mentorModal && mentorModalBody) {
+            mentorModal.classList.remove('hidden');
+            mentorModalBody.innerHTML = '<p class="mentor-error">Please type a question first.</p>';
+        }
         return;
     }
     
-    askBtn.disabled = true;
-    askBtn.textContent = 'Thinking...';
-    responseDiv.innerHTML = '<p class="mentor-loading">Your mentor is thinking...</p>';
-    responseDiv.classList.remove('hidden');
+    // Visual feedback: disable button and show loading state
+    if (askBtn) {
+        askBtn.disabled = true;
+        askBtn.textContent = 'Asking...';
+        askBtn.style.opacity = '0.7';
+        askBtn.style.cursor = 'not-allowed';
+    }
+    
+    // Show modal with loading state
+    if (mentorModal && mentorModalBody) {
+        mentorModal.classList.remove('hidden');
+        mentorModalBody.innerHTML = '<div class="mentor-loading"><div class="global-spinner" style="margin: 0 auto; width: 40px; height: 40px;"></div><p style="margin-top: 20px;">Your mentor is thinking...</p></div>';
+    }
+    
     showGlobalLoading();
     
     try {
@@ -1428,20 +1442,32 @@ async function askMentor(screen) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to get response');
         
-        responseDiv.innerHTML = `
-            <div class="mentor-answer">
-                <strong>Mentor:</strong>
-                <p>${data.answer}</p>
-            </div>
-        `;
+        // Show response in modal
+        if (mentorModal && mentorModalBody) {
+            mentorModalBody.innerHTML = `
+                <div class="mentor-answer">
+                    <strong>Mentor:</strong>
+                    <p>${data.answer}</p>
+                </div>
+            `;
+        }
         
-        queryInput.value = '';
+        // Clear input
+        if (queryInput) {
+            queryInput.value = '';
+        }
         
     } catch (error) {
-        responseDiv.innerHTML = `<p class="mentor-error">Error: ${error.message}</p>`;
+        if (mentorModal && mentorModalBody) {
+            mentorModalBody.innerHTML = `<p class="mentor-error">Error: ${error.message}</p>`;
+        }
     } finally {
-        askBtn.disabled = false;
-        askBtn.textContent = 'Ask Mentor';
+        if (askBtn) {
+            askBtn.disabled = false;
+            askBtn.textContent = 'Ask Mentor';
+            askBtn.style.opacity = '1';
+            askBtn.style.cursor = 'pointer';
+        }
         hideGlobalLoading();
     }
 }
