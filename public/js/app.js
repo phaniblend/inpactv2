@@ -191,6 +191,10 @@ const questionBankContainer = document.getElementById('questionBankContainer');
 
 let loadingTimeout = null;
 
+// Cache for preloaded tutorials
+let preloadedTutorials = {};
+let preloadedTasks = null;
+
 function showGlobalLoading() {
     // Clear any existing timeout
     if (loadingTimeout) {
