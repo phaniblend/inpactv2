@@ -1444,6 +1444,73 @@ async function askMentor(screen) {
     }
 }
 
+async function askMentorForEditor(screen) {
+    const queryInput = document.getElementById('editorMentorQuery');
+    const responseDiv = document.getElementById('editorMentorResponse');
+    const askBtn = document.getElementById('editorAskMentorBtn');
+    
+    const question = queryInput ? queryInput.value.trim() : '';
+    
+    if (!question) {
+        if (responseDiv) {
+            responseDiv.classList.remove('hidden');
+            responseDiv.innerHTML = '<p class="mentor-error">Please type a question first.</p>';
+        }
+        return;
+    }
+    
+    if (responseDiv) {
+        responseDiv.classList.remove('hidden');
+        responseDiv.innerHTML = '<p class="mentor-loading">Your mentor is thinking...</p>';
+    }
+    if (askBtn) {
+        askBtn.disabled = true;
+        askBtn.textContent = 'Thinking...';
+    }
+    
+    showGlobalLoading();
+    
+    try {
+        const response = await fetch('/api/ask-mentor', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question,
+                screen,
+                tutorial: currentTutorial,
+                atomicTask: currentAtomicTask
+            })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to get response');
+        
+        if (responseDiv) {
+            responseDiv.innerHTML = `
+                <div class="mentor-answer">
+                    <strong>Mentor:</strong>
+                    <p>${data.answer}</p>
+                </div>
+            `;
+        }
+        
+        if (queryInput) {
+            queryInput.value = '';
+        }
+        
+    } catch (error) {
+        if (responseDiv) {
+            responseDiv.innerHTML = `<p class="mentor-error">Error: ${error.message}</p>`;
+        }
+    } finally {
+        if (askBtn) {
+            askBtn.disabled = false;
+            askBtn.textContent = 'Ask Mentor';
+        }
+        hideGlobalLoading();
+    }
+}
+
 // ============================================================================
 // CODE VALIDATION
 // ============================================================================
