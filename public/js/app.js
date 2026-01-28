@@ -1308,6 +1308,13 @@ function getScreenHTML(screen, isEditorView = false) {
             
         case 'now-you-try':
         case 'implementation':
+            const editorInstructions = isEditorView ? `
+                <div class="editor-instructions" style="background: #e8f4f8; border-left: 4px solid #00ff88; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                    <p style="margin: 0 0 8px 0; font-weight: 600; color: #1e2a3a;">💡 Use the code editor on the right to write and test your code!</p>
+                    <p style="margin: 0; font-size: 0.9rem; color: #5a6a7a;">Type your solution in the editor, then click "Run Code" to test it, or "Check Code" to validate your implementation.</p>
+                </div>
+            ` : '';
+            
             return `
                 <div class="screen-container screen-implementation">
                     <div class="screen-header">
@@ -1318,6 +1325,7 @@ function getScreenHTML(screen, isEditorView = false) {
                     <div class="screen-body">
                         <p class="instruction-text">${content.instruction || ''}</p>
                         ${content.testCase ? `<p class="test-case"><strong>Test:</strong> <code>${content.testCase}</code></p>` : ''}
+                        ${editorInstructions}
                         
                         ${!isEditorView ? `
                         <div class="code-editor-container">
@@ -2303,6 +2311,33 @@ function updateEditorView() {
                     // Setup practice screen buttons if this is an implementation screen
                     if (screen.screenType === 'now-you-try' || screen.screenType === 'implementation') {
                         setupPracticeScreenForEditor(screen);
+                        
+                        // Auto-show editor on implementation screen (regardless of previous state)
+                        const editorCodePane = document.querySelector('.editor-code-pane');
+                        const editorLayout = document.querySelector('.editor-layout');
+                        const toggleEditorBtn = document.getElementById('toggleEditorBtn');
+                        
+                        if (editorCodePane && editorLayout) {
+                            // Show editor
+                            editorCodePane.classList.remove('hidden');
+                            editorLayout.classList.remove('editor-full-width');
+                            
+                            // Update toggle button state
+                            if (toggleEditorBtn) {
+                                toggleEditorBtn.textContent = '💻 Hide Editor';
+                                toggleEditorBtn.classList.add('active');
+                            }
+                            
+                            // Also call global update function if available
+                            if (window.updateEditorToggleState) {
+                                window.updateEditorToggleState();
+                            }
+                        }
+                    } else {
+                        // Update toggle button state when not on implementation screen
+                        if (window.updateEditorToggleState) {
+                            window.updateEditorToggleState();
+                        }
                     }
                     
                     // Setup mentor button for editor view
@@ -2776,26 +2811,48 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const toggleEditorBtn = document.getElementById('toggleEditorBtn');
     if (toggleEditorBtn) {
-        let isEditorVisible = true;
-        toggleEditorBtn.addEventListener('click', () => {
-            isEditorVisible = !isEditorVisible;
+        // Function to check actual editor visibility state
+        function isEditorActuallyVisible() {
             const editorCodePane = document.querySelector('.editor-code-pane');
-            const editorLayout = document.querySelector('.editor-layout');
-            
-            if (isEditorVisible) {
-                // Show editor
-                if (editorCodePane) editorCodePane.classList.remove('hidden');
-                if (editorLayout) editorLayout.classList.remove('editor-full-width');
+            return editorCodePane && !editorCodePane.classList.contains('hidden');
+        }
+        
+        // Function to update button state based on actual visibility
+        function updateToggleButtonState() {
+            const isVisible = isEditorActuallyVisible();
+            if (isVisible) {
                 toggleEditorBtn.textContent = '💻 Hide Editor';
                 toggleEditorBtn.classList.add('active');
             } else {
-                // Hide editor
-                if (editorCodePane) editorCodePane.classList.add('hidden');
-                if (editorLayout) editorLayout.classList.add('editor-full-width');
                 toggleEditorBtn.textContent = '💻 Show Editor';
                 toggleEditorBtn.classList.remove('active');
             }
+        }
+        
+        // Set initial state
+        updateToggleButtonState();
+        
+        toggleEditorBtn.addEventListener('click', () => {
+            const editorCodePane = document.querySelector('.editor-code-pane');
+            const editorLayout = document.querySelector('.editor-layout');
+            const isCurrentlyVisible = isEditorActuallyVisible();
+            
+            if (isCurrentlyVisible) {
+                // Hide editor
+                if (editorCodePane) editorCodePane.classList.add('hidden');
+                if (editorLayout) editorLayout.classList.add('editor-full-width');
+            } else {
+                // Show editor
+                if (editorCodePane) editorCodePane.classList.remove('hidden');
+                if (editorLayout) editorLayout.classList.remove('editor-full-width');
+            }
+            
+            // Update button state after toggle
+            updateToggleButtonState();
         });
+        
+        // Store update function globally so it can be called when screens change
+        window.updateEditorToggleState = updateToggleButtonState;
     }
     
     if (editorPrevBtn) {
