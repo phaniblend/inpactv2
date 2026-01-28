@@ -820,16 +820,19 @@ function getScreenHTML(screen) {
     switch (type) {
         case 'problem-framing':
         case 'problem-context':
+            const goalText = content.goal || content.context || content.explanation || '';
+            const contextText = content.context || content.explanation || content.goal || '';
+            // If we have a goal, use it; otherwise try context/explanation
+            const displayText = goalText || contextText || JSON.stringify(content, null, 2);
             return `
                 <div class="screen-container screen-problem-context">
                     <div class="screen-header">
-                        <span class="screen-number">${num}</span>
-                        <span class="screen-type-label">Problem Context</span>
+                        <span class="screen-number">${num || '1'}</span>
+                        <span class="screen-type-label">PROBLEM CONTEXT</span>
                     </div>
                     <h2 class="screen-title">${screen.title || 'Problem Context'}</h2>
                     <div class="screen-body no-code">
-                        <p class="goal-text">${content.goal || ''}</p>
-                        <p class="context-text">${content.context || content.explanation || ''}</p>
+                        ${displayText ? `<p class="goal-text">${displayText}</p>` : '<p>No content available for this screen.</p>'}
                         ${content.constraints ? `<p class="constraints-text"><strong>Constraints:</strong> ${content.constraints}</p>` : ''}
                     </div>
                 </div>
