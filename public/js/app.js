@@ -1934,19 +1934,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                 });
                 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Code execution failed');
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    // If not JSON, read as text to see what we got
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Code execution failed');
+                }
                 
                 if (output) {
-                    if (data.output) {
-                        output.textContent = data.output;
-                    } else if (data.error) {
+                    if (data.error) {
                         output.innerHTML = `<span style="color: #f87171;">Error: ${data.error}</span>`;
+                    } else if (data.output) {
+                        output.textContent = data.output;
                     } else {
                         output.textContent = 'Code executed successfully (no output)';
                     }
                 }
             } catch (error) {
+                console.error('Code execution error:', error);
                 if (output) {
                     output.innerHTML = `<span style="color: #f87171;">Error: ${error.message}</span>`;
                 }

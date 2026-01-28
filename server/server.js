@@ -288,12 +288,29 @@ app.post('/api/run-code', async (req, res) => {
     console.log(`Running ${language || 'JavaScript'} code...`);
     
     const result = await executeCode(code, language || 'JavaScript');
-    res.json({ success: true, output: result.output, error: result.error });
+    
+    // Always return JSON, even if there's an error
+    if (result.error) {
+      return res.json({ 
+        success: false, 
+        output: result.output || '', 
+        error: result.error 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      output: result.output || 'Code executed successfully (no output)', 
+      error: null 
+    });
   } catch (error) {
     console.error('Error executing code:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
+      success: false,
       error: 'Failed to execute code', 
-      message: error.message 
+      message: error.message,
+      output: ''
     });
   }
 });
