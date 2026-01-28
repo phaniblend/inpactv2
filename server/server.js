@@ -20,6 +20,7 @@ import {
   generateHint,
   askMentor
 } from './openai-service.js';
+import { getFromCache, saveToCache, getCacheStats } from './cache-service.js';
 
 const execAsync = promisify(exec);
 
@@ -186,6 +187,13 @@ app.post('/api/generate-objectives', async (req, res) => {
     }
     console.log(`Generating objectives for: "${task}" in ${technology}`);
     
+    // Check cache first
+    const cached = await getFromCache('objectives', task, technology);
+    if (cached && cached.data) {
+      console.log('✓ Serving from cache');
+      return res.json({ success: true, objectives: cached.data, task, technology, _cached: true });
+    }
+    
     // Check if API key is configured
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY is not set');
@@ -195,8 +203,13 @@ app.post('/api/generate-objectives', async (req, res) => {
       });
     }
     
+    // Generate from AI
     const objectives = await generateLearningObjectives(task, technology);
-    res.json({ success: true, objectives, task, technology });
+    
+    // Save to cache
+    await saveToCache('objectives', objectives, task, technology);
+    
+    res.json({ success: true, objectives, task, technology, _cached: false });
   } catch (error) {
     console.error('Error generating objectives:', error);
     console.error('Error stack:', error.stack);
@@ -216,8 +229,21 @@ app.post('/api/decompose-task', async (req, res) => {
       return res.status(400).json({ error: 'Both task and technology are required' });
     }
     console.log(`Decomposing task: "${task}" in ${technology}`);
+    
+    // Check cache first
+    const cached = await getFromCache('decompose', task, technology, breakdown || 'sequential');
+    if (cached && cached.data) {
+      console.log('✓ Serving from cache');
+      return res.json({ success: true, tasks: cached.data, breakdown, _cached: true });
+    }
+    
+    // Generate from AI
     const tasks = await decomposeTask(task, technology, breakdown);
-    res.json({ success: true, tasks, breakdown });
+    
+    // Save to cache
+    await saveToCache('decompose', tasks, task, technology, breakdown || 'sequential');
+    
+    res.json({ success: true, tasks, breakdown, _cached: false });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to decompose task', message: error.message });
@@ -232,8 +258,21 @@ app.post('/api/generate-tutorial', async (req, res) => {
       return res.status(400).json({ error: 'atomicTask and projectContext are required' });
     }
     console.log(`Generating tutorial for: "${atomicTask}"`);
+    
+    // Check cache first - cache by atomicTask + project context
+    const cached = await getFromCache('tutorial', atomicTask, projectContext.task, projectContext.technology);
+    if (cached && cached.data) {
+      console.log('✓ Serving from cache');
+      return res.json({ success: true, tutorial: cached.data, _cached: true });
+    }
+    
+    // Generate from AI
     const tutorial = await generateTutorialSteps(atomicTask, projectContext);
-    res.json({ success: true, tutorial });
+    
+    // Save to cache
+    await saveToCache('tutorial', tutorial, atomicTask, projectContext.task, projectContext.technology);
+    
+    res.json({ success: true, tutorial, _cached: false });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to generate tutorial', message: error.message });
@@ -329,6 +368,17 @@ app.post('/api/run-code', async (req, res) => {
 // Health Check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
+});
+
+// Cache Statistics (optional endpoint for monitoring)
+app.get('/api/cache-stats', async (req, res) => {
+  try {
+    const stats = await getCacheStats();
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Error getting cache stats:', error);
+    res.status(500).json({ error: 'Failed to get cache stats', message: error.message });
+  }
 });
 
 app.listen(PORT, () => {
