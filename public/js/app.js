@@ -2531,6 +2531,26 @@ function updateEditorCode() {
 
 // Event listeners for editor view
 document.addEventListener('DOMContentLoaded', () => {
+    // Floating editor button
+    const floatingEditorBtn = document.getElementById('floatingEditorBtn');
+    if (floatingEditorBtn) {
+        floatingEditorBtn.addEventListener('click', () => {
+            // Find first non-setup task
+            if (allTasks && allTasks.length > 0) {
+                const firstNonSetupTask = allTasks.find(task => !isSetupTask(task));
+                if (firstNonSetupTask) {
+                    openOnlineEditor(firstNonSetupTask);
+                } else {
+                    // If all tasks are setup, just open with first task
+                    openOnlineEditor(allTasks[0]);
+                }
+            } else {
+                // Fallback: show error or use current task
+                alert('Please wait for tasks to load, or start a new learning path.');
+            }
+        });
+    }
+    
     const backFromEditorBtn = document.getElementById('backFromEditorBtn');
     const editorPrevBtn = document.getElementById('editorPrevBtn');
     const editorNextBtn = document.getElementById('editorNextBtn');
