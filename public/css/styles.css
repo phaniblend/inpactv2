@@ -1280,6 +1280,158 @@ footer {
 }
 
 /* ============================================================================
+   AUTH MODAL
+   ============================================================================ */
+
+.auth-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.auth-modal.hidden {
+    display: none;
+}
+
+.auth-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.auth-modal-content {
+    position: relative;
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 2001;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-modal-header {
+    padding: 32px 32px 24px;
+    text-align: center;
+    border-bottom: 1px solid rgba(30, 42, 58, 0.1);
+}
+
+.auth-modal-header h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 12px 0;
+}
+
+.auth-modal-subtitle {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.6;
+}
+
+.auth-modal-body {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 16px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.google-auth-btn {
+    background: var(--white);
+    color: var(--text);
+    border: 2px solid rgba(30, 42, 58, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.google-auth-btn:hover {
+    background: #f8f9fa;
+    border-color: rgba(30, 42, 58, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.google-auth-btn:active {
+    transform: translateY(0);
+}
+
+.next-time-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid rgba(30, 42, 58, 0.15);
+}
+
+.next-time-btn:hover {
+    background: rgba(30, 42, 58, 0.05);
+    color: var(--text);
+    border-color: rgba(30, 42, 58, 0.25);
+}
+
+.auth-modal-message {
+    padding: 20px 32px 32px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    border-top: 1px solid rgba(30, 42, 58, 0.1);
+}
+
+.auth-modal-message.hidden {
+    display: none;
+}
+
+.auth-modal-message.warning {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.05);
+    margin: 0 32px 32px;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ============================================================================
    SETUP TASK
    ============================================================================ */
 

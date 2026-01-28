@@ -156,6 +156,15 @@ const generateBtn = document.getElementById('generateBtn');
 const mainHeader = document.getElementById('mainHeader');
 const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
 
+// Auth modal elements
+const authModal = document.getElementById('authModal');
+const googleAuthBtn = document.getElementById('googleAuthBtn');
+const nextTimeBtn = document.getElementById('nextTimeBtn');
+const authModalMessage = document.getElementById('authModalMessage');
+
+// Store form data temporarily when auth modal is shown
+let pendingFormSubmission = null;
+
 
 const resultsDiv = document.getElementById('results');
 const objectivesList = document.getElementById('objectives');
@@ -381,6 +390,25 @@ nextStepBtn.addEventListener('click', () => navigateScreen(1));
 document.addEventListener('DOMContentLoaded', () => {
     initQuestionBank();
     handleURLParameters();
+    
+    // Auth modal event listeners
+    if (googleAuthBtn) {
+        googleAuthBtn.addEventListener('click', handleGoogleAuth);
+    }
+    
+    if (nextTimeBtn) {
+        nextTimeBtn.addEventListener('click', handleNextTime);
+    }
+    
+    // Close modal on overlay click
+    if (authModal) {
+        const overlay = authModal.querySelector('.auth-modal-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                // Don't close on overlay click - require user to choose an option
+            });
+        }
+    }
 });
 
 // ============================================================================
@@ -391,6 +419,33 @@ function handleURLParameters() {
     const urlParams = new URLSearchParams(window.location.search);
     const task = urlParams.get('task');
     const technology = urlParams.get('technology');
+    
+    // Check if user just returned from OAuth
+    const authError = urlParams.get('auth_error');
+    if (authError) {
+        console.error('Auth error:', authError);
+        // Show error message or handle as needed
+    }
+    
+    // Check if there's a pending form submission from before OAuth
+    const pendingFormData = sessionStorage.getItem('pendingFormSubmission');
+    if (pendingFormData) {
+        try {
+            const formData = JSON.parse(pendingFormData);
+            sessionStorage.removeItem('pendingFormSubmission');
+            
+            // Populate form and proceed
+            if (taskInput) taskInput.value = formData.task;
+            if (technologyInput) technologyInput.value = formData.technology;
+            
+            // Proceed with submission
+            pendingFormSubmission = formData;
+            proceedWithFormSubmission();
+            return;
+        } catch (error) {
+            console.error('Error parsing pending form data:', error);
+        }
+    }
     
     if (task && technology) {
         // Populate form fields
@@ -420,16 +475,166 @@ function handleURLParameters() {
 }
 
 // ============================================================================
-// PHASE 1: GENERATE LEARNING OBJECTIVES
+// BROWSER FINGERPRINTING FOR TRACKING
 // ============================================================================
 
-async function handleSubmit(e) {
-    e.preventDefault();
+// Collect browser fingerprint data
+function collectBrowserData() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('Browser fingerprint', 2, 2);
+    }
     
-    currentTask = taskInput.value.trim();
-    currentTechnology = technologyInput.value.trim();
+    return {
+        userAgent: navigator.userAgent || '',
+        acceptLanguage: navigator.language || navigator.userLanguage || '',
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: new Date().getTimezoneOffset().toString(),
+        language: navigator.language || '',
+        platform: navigator.platform || '',
+        hardwareConcurrency: navigator.hardwareConcurrency || '',
+        deviceMemory: navigator.deviceMemory || '',
+        canvasFingerprint: canvas ? canvas.toDataURL().substring(0, 100) : '' // First 100 chars for consistency
+    };
+}
+
+// Generate fingerprint on server side for consistency
+async function getBrowserFingerprint() {
+    const browserData = collectBrowserData();
     
-    // Update URL without reloading page
+    try {
+        const response = await fetch('/api/generate-fingerprint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(browserData)
+        });
+        
+        const data = await response.json();
+        if (data.success && data.fingerprint) {
+            return data.fingerprint;
+        }
+    } catch (error) {
+        console.error('Error generating fingerprint:', error);
+    }
+    
+    // Fallback: create a simple hash client-side
+    const fingerprintString = Object.values(browserData).join('|');
+    let hash = 0;
+    for (let i = 0; i < fingerprintString.length; i++) {
+        const char = fingerprintString.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+}
+
+// Show auth modal
+async function showAuthModal() {
+    if (!authModal) return;
+    
+    authModal.classList.remove('hidden');
+    
+    // Check if user should see the message
+    const fingerprint = await getBrowserFingerprint();
+    try {
+        const response = await fetch('/api/get-next-time-count', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fingerprint })
+        });
+        
+        const data = await response.json();
+        if (data.success && data.shouldShowMessage) {
+            showAuthMessage("Sorry friend, you say that all the time... why don't you register if you really like me? 😊");
+        } else {
+            hideAuthMessage();
+        }
+    } catch (error) {
+        console.error('Error checking next time count:', error);
+        hideAuthMessage();
+    }
+}
+
+// Hide auth modal
+function hideAuthModal() {
+    if (authModal) authModal.classList.add('hidden');
+    hideAuthMessage();
+}
+
+// Show auth message
+function showAuthMessage(message) {
+    if (!authModalMessage) return;
+    authModalMessage.textContent = message;
+    authModalMessage.classList.remove('hidden');
+    authModalMessage.classList.add('warning');
+}
+
+// Hide auth message
+function hideAuthMessage() {
+    if (authModalMessage) {
+        authModalMessage.classList.add('hidden');
+        authModalMessage.classList.remove('warning');
+    }
+}
+
+// Handle "Next Time" button click
+async function handleNextTime() {
+    const fingerprint = await getBrowserFingerprint();
+    
+    try {
+        const response = await fetch('/api/track-next-time', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fingerprint })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            if (data.isThirdTime) {
+                showAuthMessage("Sorry friend, you say that all the time... why don't you register if you really like me? 😊");
+            } else {
+                hideAuthModal();
+                // Proceed with form submission
+                if (pendingFormSubmission) {
+                    proceedWithFormSubmission();
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error tracking next time:', error);
+        // Still proceed even if tracking fails
+        hideAuthModal();
+        if (pendingFormSubmission) {
+            proceedWithFormSubmission();
+        }
+    }
+}
+
+// Handle Google Auth
+function handleGoogleAuth() {
+    // Store pending form submission in session storage as fallback
+    if (pendingFormSubmission) {
+        sessionStorage.setItem('pendingFormSubmission', JSON.stringify(pendingFormSubmission));
+    }
+    
+    // Redirect to Google OAuth
+    const currentUrl = window.location.href;
+    window.location.href = `/api/auth/google?redirect=${encodeURIComponent(currentUrl)}`;
+}
+
+// Proceed with actual form submission
+function proceedWithFormSubmission() {
+    if (!pendingFormSubmission) return;
+    
+    const { task, technology } = pendingFormSubmission;
+    currentTask = task;
+    currentTechnology = technology;
+    
+    // Update URL
     const url = new URL(window.location);
     url.searchParams.set('task', encodeURIComponent(currentTask));
     url.searchParams.set('technology', encodeURIComponent(currentTechnology));
@@ -439,24 +644,46 @@ async function handleSubmit(e) {
     generateBtn.disabled = true;
     showGlobalLoading();
     
-    try {
-        const response = await fetch('/api/generate-objectives', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task: currentTask, technology: currentTechnology })
-        });
-        
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to generate objectives');
-        
+    // Generate objectives
+    fetch('/api/generate-objectives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: currentTask, technology: currentTechnology })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success && !data.objectives) throw new Error(data.error || 'Failed to generate objectives');
         displayObjectives(data);
-        
-    } catch (error) {
+    })
+    .catch(error => {
         displayError(error.message);
-    } finally {
+    })
+    .finally(() => {
         generateBtn.disabled = false;
         hideGlobalLoading();
+        pendingFormSubmission = null;
+    });
+}
+
+// ============================================================================
+// PHASE 1: GENERATE LEARNING OBJECTIVES
+// ============================================================================
+
+async function handleSubmit(e) {
+    e.preventDefault();
+    
+    const task = taskInput.value.trim();
+    const technology = technologyInput.value.trim();
+    
+    if (!task || !technology) {
+        return;
     }
+    
+    // Store form data temporarily
+    pendingFormSubmission = { task, technology };
+    
+    // Show auth modal first
+    await showAuthModal();
 }
 
 function displayObjectives(data) {

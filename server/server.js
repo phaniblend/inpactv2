@@ -9,6 +9,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
@@ -21,6 +22,7 @@ import {
   askMentor
 } from './openai-service.js';
 import { getFromCache, saveToCache, getCacheStats } from './cache-service.js';
+import { trackNextTime, getNextTimeCount, generateFingerprint } from './tracking-service.js';
 
 const execAsync = promisify(exec);
 
@@ -174,7 +176,38 @@ async function executeCode(code, language) {
   }
 }
 
-app.use(cors());
+// Session configuration
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT === 'production';
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'inpact-session-secret-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: isProduction && process.env.RAILWAY === 'true', // HTTPS only in production on Railway
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    sameSite: 'lax'
+  }
+}));
+
+// CORS configuration - allow Railway domain
+const allowedOrigins = [
+  'https://inpactv2-production.up.railway.app',
+  'http://localhost:3001'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || !isProduction) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -188,10 +221,15 @@ app.post('/api/generate-objectives', async (req, res) => {
     console.log(`Generating objectives for: "${task}" in ${technology}`);
     
     // Check cache first
-    const cached = await getFromCache('objectives', task, technology);
-    if (cached && cached.data) {
-      console.log('✓ Serving from cache');
-      return res.json({ success: true, objectives: cached.data, task, technology, _cached: true });
+    try {
+      const cached = await getFromCache('objectives', task, technology);
+      if (cached && cached.data) {
+        console.log('✓ Serving from cache');
+        return res.json({ success: true, objectives: cached.data, task, technology, _cached: true });
+      }
+    } catch (cacheError) {
+      console.warn('Cache check failed, proceeding with AI generation:', cacheError.message);
+      // Continue with AI generation if cache fails
     }
     
     // Check if API key is configured
@@ -379,6 +417,184 @@ app.get('/api/cache-stats', async (req, res) => {
     console.error('Error getting cache stats:', error);
     res.status(500).json({ error: 'Failed to get cache stats', message: error.message });
   }
+});
+
+// Track "Next Time" click
+app.post('/api/track-next-time', async (req, res) => {
+  try {
+    const { fingerprint } = req.body;
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Fingerprint is required' });
+    }
+    
+    const result = await trackNextTime(fingerprint);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error tracking next time:', error);
+    res.status(500).json({ error: 'Failed to track next time', message: error.message });
+  }
+});
+
+// Generate fingerprint from browser data
+app.post('/api/generate-fingerprint', async (req, res) => {
+  try {
+    const { userAgent, acceptLanguage, screenResolution, timezone, language, platform, hardwareConcurrency, deviceMemory, canvasFingerprint } = req.body;
+    const fingerprint = generateFingerprint(userAgent, acceptLanguage, screenResolution, timezone, language, platform, hardwareConcurrency, deviceMemory, canvasFingerprint);
+    res.json({ success: true, fingerprint });
+  } catch (error) {
+    console.error('Error generating fingerprint:', error);
+    res.status(500).json({ error: 'Failed to generate fingerprint', message: error.message });
+  }
+});
+
+// Get "Next Time" count
+app.post('/api/get-next-time-count', async (req, res) => {
+  try {
+    const { fingerprint } = req.body;
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Fingerprint is required' });
+    }
+    
+    const count = await getNextTimeCount(fingerprint);
+    const shouldShowMessage = count >= 3;
+    res.json({ success: true, count, shouldShowMessage });
+  } catch (error) {
+    console.error('Error getting next time count:', error);
+    res.status(500).json({ error: 'Failed to get next time count', message: error.message });
+  }
+});
+
+// ============================================================================
+// GOOGLE OAUTH ROUTES
+// ============================================================================
+
+// Initiate Google OAuth flow
+app.get('/api/auth/google', (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+  const scope = 'openid email profile';
+  const responseType = 'code';
+  
+  if (!clientId) {
+    return res.status(500).json({ error: 'Google OAuth not configured' });
+  }
+  
+  // Store the original URL they were trying to access (if any)
+  if (req.query.redirect) {
+    req.session.returnTo = req.query.redirect;
+  }
+  
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(clientId)}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `response_type=${responseType}&` +
+    `scope=${encodeURIComponent(scope)}&` +
+    `access_type=online&` +
+    `prompt=consent`;
+  
+  res.redirect(authUrl);
+});
+
+// Google OAuth callback
+app.get('/api/auth/google/callback', async (req, res) => {
+  try {
+    const { code, error } = req.query;
+    
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return res.redirect('/?auth_error=' + encodeURIComponent(error));
+    }
+    
+    if (!code) {
+      return res.redirect('/?auth_error=no_code');
+    }
+    
+    // Exchange authorization code for access token
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+    
+    if (!clientId || !clientSecret) {
+      console.error('Google OAuth credentials not configured');
+      return res.redirect('/?auth_error=not_configured');
+    }
+    
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenResponse.ok) {
+      console.error('Token exchange error:', tokenData);
+      return res.redirect('/?auth_error=token_exchange_failed');
+    }
+    
+    // Get user info from Google
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+    });
+    
+    const userInfo = await userInfoResponse.json();
+    
+    if (!userInfoResponse.ok) {
+      console.error('User info error:', userInfo);
+      return res.redirect('/?auth_error=user_info_failed');
+    }
+    
+    // Store user in session
+    req.session.user = {
+      id: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture,
+      verified: userInfo.verified_email || false
+    };
+    
+    req.session.authenticated = true;
+    
+    console.log('User authenticated:', userInfo.email);
+    
+    // Redirect to original destination or home
+    const returnTo = req.session.returnTo || '/';
+    delete req.session.returnTo;
+    res.redirect(returnTo);
+    
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    res.redirect('/?auth_error=server_error');
+  }
+});
+
+// Check authentication status
+app.get('/api/auth/status', (req, res) => {
+  res.json({
+    authenticated: !!req.session.authenticated,
+    user: req.session.user || null
+  });
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Session destroy error:', err);
+      return res.status(500).json({ error: 'Failed to logout' });
+    }
+    res.json({ success: true });
+  });
 });
 
 app.listen(PORT, () => {
