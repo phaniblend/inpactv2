@@ -1891,13 +1891,35 @@ function updateEditorView() {
         
         if (screen && editorTutorialContent) {
             try {
-                const screenHTML = getScreenHTML(screen);
+                let screenHTML = getScreenHTML(screen);
                 if (screenHTML && screenHTML.trim()) {
+                    // Add mentor section for editor view
+                    screenHTML += `
+                        <div class="mentor-section">
+                            <div class="mentor-query-container">
+                                <textarea 
+                                    id="editorMentorQuery" 
+                                    class="mentor-query-input" 
+                                    placeholder="Need clarification on something from this screen? Ask your mentor! (e.g., 'What does console.log do?' or 'How do pointers work?')"
+                                    rows="3"
+                                ></textarea>
+                                <button id="editorAskMentorBtn" class="btn-mentor">Ask Mentor</button>
+                            </div>
+                            <div id="editorMentorResponse" class="mentor-response hidden"></div>
+                        </div>
+                    `;
+                    
                     editorTutorialContent.innerHTML = screenHTML;
                     
                     // Setup practice screen buttons if this is an implementation screen
                     if (screen.screenType === 'now-you-try' || screen.screenType === 'implementation') {
                         setupPracticeScreenForEditor(screen);
+                    }
+                    
+                    // Setup mentor button for editor view
+                    const editorAskMentorBtn = document.getElementById('editorAskMentorBtn');
+                    if (editorAskMentorBtn) {
+                        editorAskMentorBtn.addEventListener('click', () => askMentorForEditor(screen));
                     }
                 } else {
                     console.warn('getScreenHTML returned empty string for screen:', screen);
