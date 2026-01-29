@@ -403,10 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check auth status first, then handle URL parameters
     // Add a small delay to ensure session is established after OAuth redirect
-    setTimeout(() => {
-        checkAuthStatus().then(() => {
-            handleURLParameters();
-        });
+    setTimeout(async () => {
+        const isAuthenticated = await checkAuthStatus();
+        // Hide auth modal if user is already authenticated
+        if (isAuthenticated && authModal) {
+            hideAuthModal();
+        }
+        handleURLParameters();
     }, 100);
     
     // Auth modal event listeners
@@ -609,6 +612,14 @@ async function getBrowserFingerprint() {
 async function showAuthModal() {
     if (!authModal) return;
     
+    // Check if user is already authenticated before showing
+    const isAuthenticated = await checkAuthStatus();
+    if (isAuthenticated) {
+        // User is already logged in, don't show modal
+        hideAuthModal();
+        return;
+    }
+    
     authModal.classList.remove('hidden');
     
     // Don't show the message when modal opens - only show it after they click "next time" multiple times
@@ -738,8 +749,16 @@ async function handleSubmit(e) {
     // Store form data temporarily
     pendingFormSubmission = { task, technology };
     
-    // Show auth modal first
-    await showAuthModal();
+    // Check if user is already authenticated before showing modal
+    const isAuthenticated = await checkAuthStatus();
+    
+    if (isAuthenticated) {
+        // User is already logged in, proceed directly
+        proceedWithFormSubmission();
+    } else {
+        // User is not authenticated, show auth modal
+        await showAuthModal();
+    }
 }
 
 function displayObjectives(data) {

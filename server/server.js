@@ -471,10 +471,23 @@ app.post('/api/get-next-time-count', async (req, res) => {
 // GOOGLE OAUTH ROUTES
 // ============================================================================
 
+// Helper function to get redirect URI based on request
+function getRedirectUri(req) {
+  // If explicitly set in env, use it
+  if (process.env.GOOGLE_REDIRECT_URI) {
+    return process.env.GOOGLE_REDIRECT_URI;
+  }
+  
+  // Otherwise, dynamically determine from request
+  const protocol = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  const host = req.get('host') || req.get('x-forwarded-host') || 'localhost:3001';
+  return `${protocol}://${host}/api/auth/google/callback`;
+}
+
 // Initiate Google OAuth flow
 app.get('/api/auth/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+  const redirectUri = getRedirectUri(req);
   const scope = 'openid email profile';
   const responseType = 'code';
   
@@ -488,9 +501,35 @@ app.get('/api/auth/google', (req, res) => {
   }
   
   // Store the original URL they were trying to access (if any)
+  // Extract only the pathname to prevent cross-domain redirects
   if (req.query.redirect) {
-    req.session.returnTo = req.query.redirect;
+    try {
+      // Parse the URL - if it's a full URL, extract pathname; if relative, use as-is
+      let redirectPath = req.query.redirect;
+      
+      // If it's a full URL (starts with http:// or https://)
+      if (redirectPath.startsWith('http://') || redirectPath.startsWith('https://')) {
+        const url = new URL(redirectPath);
+        redirectPath = url.pathname + url.search;
+      }
+      
+      // Ensure it starts with / (relative path)
+      if (!redirectPath.startsWith('/')) {
+        redirectPath = '/' + redirectPath;
+      }
+      
+      req.session.returnTo = redirectPath;
+    } catch (error) {
+      // If parsing fails, default to home
+      req.session.returnTo = '/';
+    }
   }
+  
+  // Store redirect URI in session for callback verification
+  req.session.oauthRedirectUri = redirectUri;
+  
+  console.log('OAuth redirect URI:', redirectUri);
+  console.log('Return to:', req.session.returnTo);
   
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${encodeURIComponent(clientId)}&` +
@@ -520,7 +559,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
     // Exchange authorization code for access token
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+    // Use the redirect URI from session (set during auth initiation) or determine dynamically
+    const redirectUri = req.session.oauthRedirectUri || getRedirectUri(req);
     
     if (!clientId || !clientSecret) {
       console.error('Google OAuth credentials not configured');
@@ -583,7 +623,15 @@ app.get('/api/auth/google/callback', async (req, res) => {
       }
       
       // Redirect to original destination or home
-      const returnTo = req.session.returnTo || '/';
+      // Always use relative path to ensure we stay on the same domain
+      let returnTo = req.session.returnTo || '/';
+      
+      // Final safety check: ensure it's a relative path
+      if (!returnTo.startsWith('/')) {
+        returnTo = '/' + returnTo;
+      }
+      
+      console.log('Redirecting to:', returnTo, '(relative path on current domain)');
       delete req.session.returnTo;
       res.redirect(returnTo);
     });

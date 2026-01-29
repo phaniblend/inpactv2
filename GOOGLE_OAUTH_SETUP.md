@@ -40,9 +40,10 @@ To implement Google authentication, you'll need to create OAuth 2.0 credentials 
    - Authorized JavaScript origins:
      - `http://localhost:3001` (for development)
      - `https://yourdomain.com` (for production)
-   - Authorized redirect URIs:
-     - `http://localhost:3001/api/auth/google/callback` (for development)
+   - **Authorized redirect URIs** (IMPORTANT: Add BOTH for local and production):
+     - `http://localhost:3001/api/auth/google/callback` (for local development)
      - `https://yourdomain.com/api/auth/google/callback` (for production)
+     - The app will automatically use the correct one based on where it's running
    - Click "Create"
 
 5. **IMPORTANT**: You'll see a popup with:
@@ -58,10 +59,9 @@ Add these to your `.env` file:
 ```env
 GOOGLE_CLIENT_ID=your_client_id_here
 GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:3001/api/auth/google/callback
 ```
 
-For production, update `GOOGLE_REDIRECT_URI` to your production URL.
+**Note:** `GOOGLE_REDIRECT_URI` is optional. The app will automatically detect the correct redirect URI based on the request (localhost for local dev, production URL for production). If you want to override this behavior, you can set `GOOGLE_REDIRECT_URI` explicitly.
 
 ## What These Credentials Do
 
