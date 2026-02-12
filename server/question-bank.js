@@ -212,6 +212,250 @@ const questionBank = {
   }
 };
 
+// ============================================================================
+// PEDAGOGICAL METADATA
+// Thinking-First Learning System: Metadata for visible pedagogy
+// ============================================================================
+
+const pedagogicalMetadata = {
+  "js-1": {
+    objective: "Apply hash maps to achieve O(1) lookups for complement finding in array problems",
+    bloomLevel: "Application",
+    misconceptions: [
+      "Using nested loops is always wrong (it's fine for small inputs)",
+      "Hash maps are only for counting (they're for any key-value mapping)",
+      "You must use a hash map (you can use Set for simpler cases)"
+    ],
+    prerequisites: ["arrays", "objects", "for loops", "arithmetic operations"],
+    transferChallenges: [
+      {
+        id: "js-2",
+        title: "Three Sum",
+        relation: "Extends twoSum pattern to three numbers"
+      },
+      {
+        id: "js-7",
+        title: "Array Intersection",
+        relation: "Uses similar lookup pattern"
+      }
+    ],
+    phases: {
+      conceptIsolation: {
+        objective: "Understand the complement relationship: if target is 10 and we see 7, we need 3",
+        stepIds: ["step-1"],
+        checkForUnderstanding: "What is the complement of 7 if target is 10? Why do we need complements?"
+      },
+      mentalModel: {
+        objective: "Build mental model: array → hash map → O(1) lookup → find complement",
+        stepIds: ["step-2", "step-3"],
+        checkForUnderstanding: "Explain the transformation in your own words. Why does hash map help?"
+      },
+      guidedConstruction: {
+        objective: "Build solution with step-by-step guidance",
+        stepIds: ["step-4", "step-5", "step-6"],
+        checkForUnderstanding: "What invariant does the hash map maintain? (seen numbers → their indices)",
+        microTransfers: [
+          {
+            stepId: "step-4",
+            transferType: "near",
+            prompt: "Now apply the same hash map lookup to find if a number's double exists in the array",
+            challenge: {
+              task: "Given [1, 2, 3, 4], find if any number's double exists",
+              relation: "Uses same lookup pattern, different condition"
+            }
+          }
+        ]
+      },
+      independentBuild: {
+        objective: "Build complete solution independently",
+        stepIds: ["step-7"],
+        checkForUnderstanding: "Explain your approach before coding. What edge cases will you handle?"
+      },
+      transfer: {
+        objective: "Apply hash map pattern to new problem",
+        challenge: {
+          id: "transfer-1",
+          title: "Find pairs with difference k",
+          task: "Given array and k, find all pairs (a, b) where |a - b| = k"
+        },
+        checkForUnderstanding: "How does this relate to twoSum? What's the same? What's different?",
+        transferType: "near"
+      },
+      reflection: {
+        required: true,
+        prompts: [
+          "What mental model did you use? (hash map for O(1) lookup)",
+          "What would you do differently next time?",
+          "Where else could you apply this pattern? (any problem needing fast lookups)"
+        ]
+      }
+    }
+  },
+  
+  "js-24": {
+    objective: "Apply closure and timing concepts to control function execution frequency",
+    bloomLevel: "Application",
+    misconceptions: [
+      "Debounce and throttle are the same (they have different use cases)",
+      "You must always debounce (throttle is better for continuous events)",
+      "setTimeout is the only way (you can use requestAnimationFrame for animations)"
+    ],
+    prerequisites: ["functions", "closures", "setTimeout", "event handlers"],
+    transferChallenges: [
+      {
+        id: "js-25",
+        title: "Implement Throttle",
+        relation: "Similar timing control, different behavior"
+      },
+      {
+        id: "react-13",
+        title: "Custom useDebounce Hook",
+        relation: "Applies debounce pattern in React context"
+      }
+    ],
+    phases: {
+      conceptIsolation: {
+        objective: "Understand the problem: too many function calls need to be limited",
+        stepIds: ["step-1"],
+        checkForUnderstanding: "Why do we need to limit function calls? What problems does it solve?"
+      },
+      mentalModel: {
+        objective: "Build mental model: event → timer → cancel previous → execute after delay",
+        stepIds: ["step-2", "step-3"],
+        checkForUnderstanding: "Explain how a timer can 'cancel' previous calls. What does closure capture?"
+      },
+      guidedConstruction: {
+        objective: "Build debounce with closure and setTimeout",
+        stepIds: ["step-4", "step-5"],
+        checkForUnderstanding: "What does the closure capture? Why is it important?"
+      },
+      independentBuild: {
+        objective: "Build complete debounce function independently",
+        stepIds: ["step-6"],
+        checkForUnderstanding: "How would you test this? What edge cases matter?"
+      },
+      transfer: {
+        objective: "Apply debounce pattern to search input",
+        challenge: {
+          id: "transfer-2",
+          title: "Debounced Search Input",
+          task: "Create a search input that only queries after user stops typing for 300ms"
+        },
+        transferType: "near"
+      },
+      reflection: {
+        required: true,
+        prompts: [
+          "When would you use debounce vs throttle?",
+          "What closure concepts did you apply?",
+          "Where else could you use this pattern?"
+        ]
+      }
+    }
+  },
+  
+  "react-1": {
+    objective: "Apply React component patterns: state management, event handling, and list rendering",
+    bloomLevel: "Application",
+    misconceptions: [
+      "You must use useState for everything (sometimes props are enough)",
+      "Keys in lists are optional (they're required for React's reconciliation)",
+      "State updates are synchronous (they're asynchronous and batched)"
+    ],
+    prerequisites: ["React basics", "JSX", "props", "state", "event handlers"],
+    transferChallenges: [
+      {
+        id: "react-2",
+        title: "Counter with Hooks",
+        relation: "Simpler state management pattern"
+      },
+      {
+        id: "react-16",
+        title: "useReducer Todo App",
+        relation: "More complex state management with reducer pattern"
+      }
+    ],
+    phases: {
+      conceptIsolation: {
+        objective: "Understand component structure: state, events, rendering",
+        stepIds: ["step-1"],
+        checkForUnderstanding: "What are the three main parts of a React component?"
+      },
+      mentalModel: {
+        objective: "Build mental model: state change → re-render → UI update",
+        stepIds: ["step-2", "step-3"],
+        checkForUnderstanding: "What triggers a re-render? How does React know what changed?"
+      },
+      guidedConstruction: {
+        objective: "Build TodoList component with add, delete, toggle",
+        stepIds: ["step-4", "step-5", "step-6"],
+        checkForUnderstanding: "Why do we need keys in the list? What happens without them?"
+      },
+      independentBuild: {
+        objective: "Build complete TodoList independently",
+        stepIds: ["step-7"],
+        checkForUnderstanding: "How would you add filtering (all/active/completed)?"
+      },
+      transfer: {
+        objective: "Apply component patterns to shopping cart",
+        challenge: {
+          id: "transfer-3",
+          title: "Shopping Cart Component",
+          task: "Build a shopping cart with add, remove, and quantity update"
+        },
+        transferType: "far"
+      },
+      reflection: {
+        required: true,
+        prompts: [
+          "What React patterns did you use?",
+          "How does state management work in your component?",
+          "What would you do differently for a larger app?"
+        ]
+      }
+    }
+  }
+};
+
+// Get default metadata for challenges without full metadata
+function getDefaultMetadata() {
+  return {
+    objective: null,
+    bloomLevel: null,
+    misconceptions: [],
+    prerequisites: [],
+    transferChallenges: [],
+    phases: null
+  };
+}
+
+// Get challenge metadata by ID
+export function getChallengeMetadata(challengeId) {
+  const metadata = pedagogicalMetadata[challengeId];
+  if (!metadata) {
+    return getDefaultMetadata();
+  }
+  return metadata;
+}
+
+// Get all challenges with metadata
+export function getAllChallengesWithMetadata() {
+  const allChallenges = [];
+  
+  for (const [tech, category] of Object.entries(questionBank)) {
+    for (const question of category.questions) {
+      const metadata = getChallengeMetadata(question.id);
+      allChallenges.push({
+        ...question,
+        technology: tech,
+        metadata
+      });
+    }
+  }
+  
+  return allChallenges;
+}
+
 // Export for use in app
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = questionBank;

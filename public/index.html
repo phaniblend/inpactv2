@@ -48,54 +48,59 @@
 
         <main>
             <!-- ===================================================================== -->
-            <!-- HERO SECTION: Custom Input -->
-            <!-- ===================================================================== -->
-            <form id="objectivesForm">
-                <div class="form-group">
-                    <label for="task">
-                        What's your next challenge?
-                        <span class="hint">twoSum, binary search, debounce... you name it</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="task" 
-                        name="task" 
-                        placeholder="e.g., implement a throttle function"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="technology">
-                        Pick your weapon
-                        <span class="hint">JavaScript, React, TypeScript, Node.js</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="technology" 
-                        name="technology" 
-                        placeholder="e.g., JavaScript"
-                        required
-                    >
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" id="generateBtn">
-                        Build My Learning Path
-                    </button>
-                </div>
-            </form>
-
-            <!-- ===================================================================== -->
             <!-- QUESTION BANK: Curated Challenges -->
             <!-- ===================================================================== -->
             <section id="questionBankSection" class="question-bank-section">
                 <div class="qb-header">
-                    <p class="qb-eyebrow">— or dive straight in —</p>
                     <h2>100+ Practice Challenges</h2>
                     <p class="qb-subhead">Classic problems every frontend developer should know.<br>Organized by topic. Built for real understanding.</p>
                 </div>
                 <div id="questionBankContainer" class="question-bank-container"></div>
+            </section>
+
+            <!-- ===================================================================== -->
+            <!-- CUSTOM CHALLENGE BUILDER -->
+            <!-- ===================================================================== -->
+            <section id="customChallengeSection" class="custom-challenge-section">
+                <div class="custom-challenge-header">
+                    <h2>Have something specific in mind?</h2>
+                    <p class="custom-challenge-subhead">Can't find what you're looking for? Create a personalized learning path tailored to your unique challenge.</p>
+                </div>
+                <form id="objectivesForm">
+                    <div class="form-group">
+                        <label for="task">
+                            Describe your challenge
+                            <span class="hint">Specify the problem, algorithm, or concept you want to practice</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="task" 
+                            name="task" 
+                            placeholder="e.g., implement a throttle function"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="technology">
+                            Choose your technology
+                            <span class="hint">Select the language or framework you want to use</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="technology" 
+                            name="technology" 
+                            placeholder="e.g., JavaScript"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="generateBtn">
+                            Build My Learning Path
+                        </button>
+                    </div>
+                </form>
             </section>
 
 
@@ -272,6 +277,12 @@
                 <p id="errorMessage">Something went wrong</p>
                 <button id="retryBtn" class="secondary-btn">Try again</button>
             </div>
+            
+            <!-- Pedagogy Metadata Section (dynamically inserted) -->
+            <div id="pedagogyMetadata" class="pedagogy-section hidden"></div>
+            
+            <!-- Why This Step Section (dynamically inserted) -->
+            <div id="whyThisStep" class="why-this-step hidden"></div>
         </main>
 
         <footer>
@@ -298,6 +309,38 @@
         </div>
     </div>
 
+    <!-- Prediction Modal -->
+    <div id="predictionModal" class="modal hidden" role="dialog" aria-labelledby="prediction-title" aria-modal="true">
+        <div class="modal-content">
+            <h3 id="prediction-title">Check your thinking</h3>
+            <p>Before we show you the solution, what approach do you think will work?</p>
+            <textarea id="predictionResponse" rows="4" placeholder="Describe your approach..." aria-label="Your prediction"></textarea>
+            <button id="submitPrediction">Submit</button>
+        </div>
+    </div>
+
+    <!-- Reflection Modal -->
+    <div id="reflectionModal" class="modal hidden" role="dialog" aria-labelledby="reflection-title" aria-modal="true">
+        <!-- Populated dynamically by showReflectionScreen() -->
+    </div>
+
+    <!-- Rubric Form -->
+    <div id="rubricForm" class="form-section hidden" role="form" aria-labelledby="rubric-title">
+        <h3 id="rubric-title">Self-Assessment</h3>
+        <form id="rubricFormElement" aria-label="Self-assessment rubric">
+            <fieldset>
+                <legend>Rate your understanding (1-5)</legend>
+                <label>Framing (1-5): <input type="number" min="1" max="5" name="framing" aria-label="Framing score"></label>
+                <label>Invariants (1-5): <input type="number" min="1" max="5" name="invariants" aria-label="Invariants score"></label>
+                <label>Tradeoffs (1-5): <input type="number" min="1" max="5" name="tradeoffs" aria-label="Tradeoffs score"></label>
+                <label>Debugging (1-5): <input type="number" min="1" max="5" name="debugging" aria-label="Debugging score"></label>
+                <label>Transfer (1-5): <input type="number" min="1" max="5" name="transfer" aria-label="Transfer score"></label>
+                <textarea name="notes" placeholder="Optional notes" aria-label="Additional notes"></textarea>
+                <button type="submit">Submit</button>
+            </fieldset>
+        </form>
+    </div>
+
     <!-- Auth Modal -->
     <div id="authModal" class="auth-modal hidden">
         <div class="auth-modal-overlay"></div>
@@ -321,6 +364,14 @@
                 </button>
             </div>
             <div id="authModalMessage" class="auth-modal-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-content">
+            <span class="toast-message"></span>
+            <button class="toast-close" onclick="hideToast()">×</button>
         </div>
     </div>
 

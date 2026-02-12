@@ -204,6 +204,7 @@ const errorMessage = document.getElementById('errorMessage');
 // Question Bank Elements
 const questionBankSection = document.getElementById('questionBankSection');
 const questionBankContainer = document.getElementById('questionBankContainer');
+const customChallengeSection = document.getElementById('customChallengeSection');
 
 // ============================================================================
 // LOADING OVERLAY UTILITIES
@@ -258,6 +259,53 @@ let studentCodeByTask = {}; // Store student's code submissions by task
 let allTasks = []; // Store all tasks from the breakdown
 let monacoEditor = null; // Monaco editor instance
 let currentEditorTaskIndex = 0; // Current task being worked on in editor
+
+// ============================================================================
+// ATTEMPT MANAGEMENT (Stable Attempt Model)
+// ============================================================================
+let currentAttemptId = null;
+
+// Create or get attempt when challenge starts
+async function initializeAttempt(challengeId) {
+  try {
+    const userId = currentUser?.id || 'anonymous';
+    const response = await fetch('/api/create-attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, challengeId })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      currentAttemptId = data.attemptId;
+      return currentAttemptId;
+    }
+  } catch (error) {
+    console.error('Error initializing attempt:', error);
+  }
+  return null;
+}
+
+// Close attempt when challenge completes or is abandoned
+async function finalizeAttempt(status = 'completed') {
+  if (!currentAttemptId || !currentTask) return;
+  
+  try {
+    const userId = currentUser?.id || 'anonymous';
+    await fetch('/api/close-attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        challengeId: currentTask,
+        attemptId: currentAttemptId,
+        status
+      })
+    });
+  } catch (error) {
+    console.error('Error finalizing attempt:', error);
+  }
+}
 
 // ============================================================================
 // INITIALIZE QUESTION BANK
@@ -338,7 +386,7 @@ async function generateObjectivesForQuestion(question, technology) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to generate objectives');
         
-        displayObjectives(data);
+        await displayObjectives(data);
         
     } catch (error) {
         displayError(error.message);
@@ -364,7 +412,18 @@ function isSetupTask(taskText) {
 }
 
 function getSetupInstructions(taskText, technology) {
-    const searchQuery = encodeURIComponent(`${taskText} ${technology} tutorial`);
+    // Use generic search query for Node.js project setup, not the full task description
+    let searchQuery;
+    if (technology.toLowerCase().includes('javascript') || technology.toLowerCase().includes('js') || technology.toLowerCase().includes('node')) {
+        searchQuery = encodeURIComponent('how to set up Node.js project JavaScript');
+    } else if (technology.toLowerCase().includes('react')) {
+        searchQuery = encodeURIComponent('how to set up React project');
+    } else if (technology.toLowerCase().includes('typescript')) {
+        searchQuery = encodeURIComponent('how to set up TypeScript Node.js project');
+    } else {
+        // Fallback to generic Node.js setup
+        searchQuery = encodeURIComponent('how to set up Node.js project');
+    }
     const youtubeLink = `https://www.youtube.com/results?search_query=${searchQuery}`;
     
     return {
@@ -718,9 +777,9 @@ function proceedWithFormSubmission() {
         body: JSON.stringify({ task: currentTask, technology: currentTechnology })
     })
     .then(response => response.json())
-    .then(data => {
+    .then(async data => {
         if (!data.success && !data.objectives) throw new Error(data.error || 'Failed to generate objectives');
-        displayObjectives(data);
+        await displayObjectives(data);
     })
     .catch(error => {
         displayError(error.message);
@@ -761,19 +820,397 @@ async function handleSubmit(e) {
     }
 }
 
-function displayObjectives(data) {
+function formatObjectivesText(text) {
+    if (!text) return '';
+    
+    // Split by lines to preserve structure
+    const lines = text.split('\n');
+    
+    return lines.map(line => {
+        if (!line.trim()) return line;
+        
+        let formatted = line;
+        
+        // Use a placeholder to avoid double-processing
+        const placeholders = [];
+        let placeholderIndex = 0;
+        
+        // Pattern 1: Code in parentheses like (arr[i]), (obj[variable]), etc.
+        formatted = formatted.replace(/\(([a-zA-Z_$][a-zA-Z0-9_$\[\]().]+)\)/g, (match, code) => {
+            const placeholder = `__CODE_${placeholderIndex++}__`;
+            placeholders.push({ placeholder, replacement: `(<code>${code}</code>)` });
+            return placeholder;
+        });
+        
+        // Pattern 2: Technical notation like O(1), O(n), etc.
+        formatted = formatted.replace(/\b(O\([^)]+\))/gi, (match) => {
+            const placeholder = `__CODE_${placeholderIndex++}__`;
+            placeholders.push({ placeholder, replacement: `<code>${match}</code>` });
+            return placeholder;
+        });
+        
+        // Pattern 3: Common language constructs and keywords (process longer terms first)
+        const codeTerms = [
+            'for loops', 'for loop', 'while loops', 'while loop', 'if statements', 'if statement',
+            'hash maps', 'hash map', 'hash tables', 'hash table',
+            'bracket notation', 'dot notation', 'arrow functions', 'arrow function',
+            'template literals', 'template literal', 'spread operator',
+            'event handlers', 'event handler',
+            'O\\(1\\)', 'O\\(n\\)', 'O\\(log n\\)', 'O\\(n²\\)', 'O\\(n log n\\)',
+            'async/await', 'objects', 'arrays', 'functions', 'methods', 'variables', 'constants',
+            'destructuring', 'promises', 'callbacks', 'closures', 'scope',
+            'useState', 'useEffect', 'useContext', 'hooks', 'components',
+            'props', 'state', 'rendering', 'lifecycle',
+            'TypeScript', 'JavaScript', 'React', 'Node.js', 'Express',
+            'DOM', 'API', 'JSON', 'HTTP', 'REST', 'CRUD',
+            'CSS', 'HTML', 'JSX', 'TSX'
+        ];
+        
+        // Wrap code terms in <code> tags (case-insensitive, whole word)
+        codeTerms.forEach(term => {
+            const regex = new RegExp(`\\b(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'gi');
+            formatted = formatted.replace(regex, (match) => {
+                // Check if already processed
+                if (match.includes('__CODE_')) return match;
+                const placeholder = `__CODE_${placeholderIndex++}__`;
+                placeholders.push({ placeholder, replacement: `<code>${match}</code>` });
+                return placeholder;
+            });
+        });
+        
+        // Pattern 4: Method calls like .map(), .filter(), .reduce(), etc.
+        formatted = formatted.replace(/\.([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g, (match, method) => {
+            if (match.includes('__CODE_')) return match;
+            const placeholder = `__CODE_${placeholderIndex++}__`;
+            placeholders.push({ placeholder, replacement: `.<code>${method}</code>(` });
+            return placeholder;
+        });
+        
+        // Pattern 5: JavaScript keywords
+        formatted = formatted.replace(/\b(in|typeof|instanceof|new|this|super|const|let|var)\b/gi, (match) => {
+            if (match.includes('__CODE_')) return match;
+            const placeholder = `__CODE_${placeholderIndex++}__`;
+            placeholders.push({ placeholder, replacement: `<code>${match}</code>` });
+            return placeholder;
+        });
+        
+        // Replace all placeholders back
+        placeholders.forEach(({ placeholder, replacement }) => {
+            formatted = formatted.replace(placeholder, replacement);
+        });
+        
+        return formatted;
+    }).join('\n');
+}
+
+async function displayObjectives(data) {
     document.getElementById('resultTask').textContent = data.task;
     document.getElementById('resultTech').textContent = data.technology;
-    document.getElementById('objectives').textContent = data.objectives;
+    
+    // Format objectives with code highlighting
+    const formattedObjectives = formatObjectivesText(data.objectives);
+    document.getElementById('objectives').innerHTML = formattedObjectives;
+    
+    // Initialize attempt for this challenge
+    // Use task as challengeId (we'll need to map this properly)
+    const challengeId = getChallengeIdFromTask(data.task, data.technology);
+    if (challengeId) {
+        await initializeAttempt(challengeId);
+        // Display pedagogy metadata
+        await displayPedagogyMetadata(challengeId);
+    }
     
     mainHeader.classList.add('hidden');
     form.classList.add('hidden');
     if (questionBankSection) questionBankSection.classList.add('hidden');
+    if (customChallengeSection) customChallengeSection.classList.add('hidden');
     resultsDiv.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
     // Preload task breakdown and tutorials in the background
     preloadTaskBreakdownAndTutorials();
+}
+
+// Helper to get challengeId from task (simplified - can be enhanced)
+function getChallengeIdFromTask(task, technology) {
+    // This is a simplified mapping - in production, you'd have a proper mapping
+    // For now, we'll try to match based on task content
+    const taskLower = task.toLowerCase();
+    const techLower = technology.toLowerCase();
+    
+    if (taskLower.includes('twosum') || taskLower.includes('two sum')) {
+        return 'js-1';
+    }
+    if (taskLower.includes('debounce')) {
+        return 'js-24';
+    }
+    if (taskLower.includes('todo') && techLower.includes('react')) {
+        return 'react-1';
+    }
+    
+    // Try to find in question bank
+    for (const [tech, data] of Object.entries(questionBank)) {
+        const question = data.questions.find(q => 
+            q.task.toLowerCase() === taskLower || 
+            q.task.toLowerCase().includes(taskLower.substring(0, 20))
+        );
+        if (question) {
+            return question.id;
+        }
+    }
+    
+    return null;
+}
+
+// ============================================================================
+// PEDAGOGY DISPLAY FUNCTIONS
+// ============================================================================
+
+// Display pedagogy metadata (objective, Bloom level, misconceptions)
+async function displayPedagogyMetadata(challengeId) {
+    try {
+        const response = await fetch(`/api/challenge-metadata/${challengeId}`);
+        const data = await response.json();
+        
+        if (data.success && data.metadata) {
+            const metadata = data.metadata;
+            
+            // Create or get pedagogy section
+            let pedagogySection = document.getElementById('pedagogyMetadata');
+            if (!pedagogySection) {
+                pedagogySection = document.createElement('div');
+                pedagogySection.id = 'pedagogyMetadata';
+                pedagogySection.className = 'pedagogy-section';
+                
+                // Insert before objectives
+                const objectivesSection = document.querySelector('.objectives-section');
+                if (objectivesSection) {
+                    objectivesSection.insertBefore(pedagogySection, objectivesSection.firstChild);
+                }
+            }
+            
+            let html = '';
+            
+            // Display objective
+            if (metadata.objective) {
+                html += `<div class="challenge-objective"><strong>Learning Objective:</strong> ${metadata.objective}</div>`;
+            }
+            
+            // Display Bloom badge
+            if (metadata.bloomLevel) {
+                const bloomClass = metadata.bloomLevel.toLowerCase().replace(' ', '-');
+                html += `<div class="bloom-badge bloom-${bloomClass}">${metadata.bloomLevel}</div>`;
+            }
+            
+            // Display misconceptions
+            if (metadata.misconceptions && metadata.misconceptions.length > 0) {
+                html += `<div class="common-misconceptions"><h4>Common Misconceptions</h4><ul>`;
+                metadata.misconceptions.forEach(m => {
+                    html += `<li>${m}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+            
+            pedagogySection.innerHTML = html;
+            pedagogySection.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading pedagogy metadata:', error);
+    }
+}
+
+// Show "Why this step?" section
+function showWhyThisStep(stepIndex) {
+    const currentScreen = currentTutorial?.screens?.[stepIndex];
+    if (!currentScreen || !currentScreen.whyThisStep) return;
+    
+    let whySection = document.getElementById('whyThisStep');
+    if (!whySection) {
+        whySection = document.createElement('div');
+        whySection.id = 'whyThisStep';
+        whySection.className = 'why-this-step';
+        
+        // Insert into tutorial view
+        const stepContent = document.getElementById('stepContent');
+        if (stepContent) {
+            stepContent.insertBefore(whySection, stepContent.firstChild);
+        }
+    }
+    
+    whySection.innerHTML = `
+        <h4>Why this step?</h4>
+        <p>${currentScreen.whyThisStep}</p>
+    `;
+    whySection.classList.remove('hidden');
+}
+
+// Show prediction prompt before hint/solution
+async function showPredictionPrompt() {
+    if (!currentAttemptId) {
+        // Try to initialize attempt
+        const challengeId = getChallengeIdFromTask(currentTask, currentTechnology);
+        if (challengeId) {
+            await initializeAttempt(challengeId);
+        }
+    }
+    
+    const predictionModal = document.getElementById('predictionModal');
+    if (!predictionModal) {
+        // Create modal if it doesn't exist
+        createPredictionModal();
+        return;
+    }
+    
+    predictionModal.classList.remove('hidden');
+    
+    const submitBtn = predictionModal.querySelector('#submitPrediction');
+    if (submitBtn) {
+        submitBtn.onclick = async () => {
+            const response = predictionModal.querySelector('#predictionResponse').value;
+            
+            if (!response.trim()) {
+                alert('Please provide your prediction before proceeding.');
+                return;
+            }
+            
+            // Save prediction
+            try {
+                const userId = currentUser?.id || 'anonymous';
+                await fetch('/api/save-prediction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        challengeId: currentTask,
+                        attemptId: currentAttemptId,
+                        prompt: 'What approach do you think will work?',
+                        response
+                    })
+                });
+            } catch (error) {
+                console.error('Error saving prediction:', error);
+            }
+            
+            predictionModal.classList.add('hidden');
+        };
+    }
+}
+
+// Create prediction modal if it doesn't exist
+function createPredictionModal() {
+    const modal = document.createElement('div');
+    modal.id = 'predictionModal';
+    modal.className = 'modal hidden';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>Check your thinking</h3>
+            <p>Before we show you the solution, what approach do you think will work?</p>
+            <textarea id="predictionResponse" rows="4" placeholder="Describe your approach..."></textarea>
+            <button id="submitPrediction">Submit</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    showPredictionPrompt();
+}
+
+// Show reflection screen after completion
+async function showReflectionScreen() {
+    if (!currentAttemptId) return;
+    
+    let reflectionModal = document.getElementById('reflectionModal');
+    if (!reflectionModal) {
+        reflectionModal = document.createElement('div');
+        reflectionModal.id = 'reflectionModal';
+        reflectionModal.className = 'modal hidden';
+        document.body.appendChild(reflectionModal);
+    }
+    
+    // Get reflection prompts from metadata
+    const challengeId = getChallengeIdFromTask(currentTask, currentTechnology);
+    let prompts = [
+        'What mental model did you use?',
+        'What would you do differently?',
+        'Where else could you apply this pattern?'
+    ];
+    
+    if (challengeId) {
+        try {
+            const response = await fetch(`/api/challenge-metadata/${challengeId}`);
+            const data = await response.json();
+            if (data.success && data.metadata?.phases?.reflection?.prompts) {
+                prompts = data.metadata.phases.reflection.prompts;
+            }
+        } catch (error) {
+            console.error('Error loading reflection prompts:', error);
+        }
+    }
+    
+    reflectionModal.innerHTML = `
+        <div class="reflection-modal">
+            <h3>Reflection</h3>
+            <form id="reflectionForm">
+                ${prompts.map((prompt, i) => `
+                    <div class="reflection-prompt">
+                        <label for="reflection-${i}">${prompt}</label>
+                        <textarea id="reflection-${i}" rows="3" required></textarea>
+                    </div>
+                `).join('')}
+                <button type="submit">Submit Reflection</button>
+            </form>
+        </div>
+    `;
+    
+    reflectionModal.classList.remove('hidden');
+    
+    // Handle form submission
+    const form = reflectionModal.querySelector('#reflectionForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        await submitReflection(prompts.length);
+    };
+}
+
+// Submit reflection
+async function submitReflection(promptCount) {
+    const responses = [];
+    for (let i = 0; i < promptCount; i++) {
+        const el = document.getElementById(`reflection-${i}`);
+        if (el) responses.push(el.value);
+    }
+    
+    try {
+        const userId = currentUser?.id || 'anonymous';
+        await fetch('/api/save-reflection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId,
+                challengeId: currentTask,
+                attemptId: currentAttemptId,
+                responses
+            })
+        });
+        
+        document.getElementById('reflectionModal').classList.add('hidden');
+        
+        // Finalize attempt
+        await finalizeAttempt('completed');
+    } catch (error) {
+        console.error('Error submitting reflection:', error);
+    }
+}
+
+// Check if all tasks are completed and show reflection
+async function checkAndShowReflectionIfComplete() {
+    if (!allTasks || allTasks.length === 0) return;
+    
+    const allCompleted = allTasks.every(task => completedTasks.includes(task));
+    if (allCompleted && currentAttemptId) {
+        // Small delay to let user see completion message
+        setTimeout(() => {
+            showReflectionScreen();
+        }, 1500);
+    }
 }
 
 // ============================================================================
@@ -889,11 +1326,15 @@ function displayTaskBreakdown(tasks) {
     mainHeader.classList.add('hidden');
     form.classList.add('hidden');
     if (questionBankSection) questionBankSection.classList.add('hidden');
+    if (customChallengeSection) customChallengeSection.classList.add('hidden');
     breakdownResults.classList.remove('hidden');
     // Show floating editor button when roadmap is visible
     const floatingEditorBtn = document.getElementById('floatingEditorBtn');
     if (floatingEditorBtn) floatingEditorBtn.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Show toast instruction
+    showToast('Click on each task below to view detailed instructions and start learning step by step.');
 }
 
 function createTaskSection(title, icon, tasks) {
@@ -1013,11 +1454,6 @@ function displaySetupTask(taskText) {
                     <p class="setup-why-text">${setupInfo.why}</p>
                 </div>
                 
-                <div class="setup-intro">
-                    <strong>Before you start coding, you'll need to set up your environment.</strong><br>
-                    Complete each step below and check it off when done.
-                </div>
-                
                 <div class="setup-options">
                     <div class="setup-option">
                         <div class="setup-option-icon">📺</div>
@@ -1040,6 +1476,11 @@ function displaySetupTask(taskText) {
                             </button>
                         </div>
                     </div>
+                </div>
+                
+                <div class="setup-intro">
+                    <strong>Before you start coding, you'll need to set up your environment.</strong><br>
+                    Complete each step below and check it off when done.
                 </div>
                 
                 <div class="setup-checklist">
@@ -1066,6 +1507,16 @@ function displaySetupTask(taskText) {
             nextStepBtn.disabled = !allChecked;
             if (allChecked && !completedTasks.includes(taskText)) {
                 completedTasks.push(taskText);
+                
+                // Show reflection screen after completion
+                // Check if this is the last task
+                const allTasksCompleted = allTasks.every(t => completedTasks.includes(t));
+                if (allTasksCompleted) {
+                    // All tasks done - show reflection
+                    setTimeout(() => {
+                        showReflectionScreen();
+                    }, 1000);
+                }
             }
         });
     });
@@ -1531,6 +1982,8 @@ async function validateCodeForEditor(userCode, screen) {
                     if (currentUser && currentTask && currentAtomicTask) {
                         trackTaskCompletion(currentTask, currentAtomicTask);
                     }
+                    // Check if all tasks complete and show reflection
+                    checkAndShowReflectionIfComplete();
                 }
                 updateEditorProgressIndicator();
             } else if (validation && validation.feedback && validation.feedback.length > 0) {
@@ -1699,6 +2152,7 @@ function showTaskBreakdown() {
     mainHeader.classList.add('hidden');
     form.classList.add('hidden');
     if (questionBankSection) questionBankSection.classList.add('hidden');
+    if (customChallengeSection) customChallengeSection.classList.add('hidden');
     breakdownResults.classList.remove('hidden');
     
     // Show floating editor button when roadmap is visible
@@ -1707,6 +2161,10 @@ function showTaskBreakdown() {
     
     refreshTaskList();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Show toast instruction
+    showToast('Click on each task below to view detailed instructions and start learning step by step.');
+    
     setTimeout(() => hideGlobalLoading(), 50);
 }
 
@@ -1736,6 +2194,7 @@ function showObjectives() {
     mainHeader.classList.add('hidden');
     form.classList.add('hidden');
     if (questionBankSection) questionBankSection.classList.add('hidden');
+    if (customChallengeSection) customChallengeSection.classList.add('hidden');
     resultsDiv.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => hideGlobalLoading(), 50);
@@ -2393,6 +2852,7 @@ function resetToStart() {
     mainHeader.classList.remove('hidden');
     form.classList.remove('hidden');
     if (questionBankSection) questionBankSection.classList.remove('hidden');
+    if (customChallengeSection) customChallengeSection.classList.remove('hidden');
     form.reset();
     currentTask = null;
     currentTechnology = null;
@@ -2416,6 +2876,37 @@ function hideAll() {
     const onlineEditorView = document.getElementById('onlineEditorView');
     if (onlineEditorView) onlineEditorView.classList.add('hidden');
 }
+
+// ============================================================================
+// TOAST NOTIFICATION
+// ============================================================================
+
+function showToast(message, duration = 6000) {
+    const toast = document.getElementById('toast');
+    const toastMessage = toast?.querySelector('.toast-message');
+    
+    if (!toast || !toastMessage) return;
+    
+    toastMessage.textContent = message;
+    toast.classList.remove('hidden');
+    
+    // Auto-hide after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            hideToast();
+        }, duration);
+    }
+}
+
+function hideToast() {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.classList.add('hidden');
+    }
+}
+
+// Make hideToast globally accessible for the close button
+window.hideToast = hideToast;
 
 // ============================================================================
 // ONLINE EDITOR FUNCTIONALITY
@@ -3228,6 +3719,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (currentUser && currentTask && currentAtomicTask) {
                         trackTaskCompletion(currentTask, currentAtomicTask);
                     }
+                    // Check if all tasks complete and show reflection
+                    checkAndShowReflectionIfComplete();
                 }
                 updateEditorProgressIndicator();
                 

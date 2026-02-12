@@ -22,8 +22,9 @@ import {
   askMentor
 } from './openai-service.js';
 import { getFromCache, saveToCache, getCacheStats } from './cache-service.js';
-import { trackNextTime, getNextTimeCount, generateFingerprint } from './tracking-service.js';
-import { getUserData, saveUserData, addChallenge, completeTask, saveUserCode, getDashboardData } from './user-service.js';
+import { trackNextTime, getNextTimeCount, generateFingerprint, createAttempt, getOrCreateAttempt, getAttempt, closeAttempt, savePrediction, saveReflection, saveRubric, saveTransfer, getLearningArtifacts, recordHintUsage, saveCheckResponse, recordErrorClassification } from './tracking-service.js';
+import { getUserData, saveUserData, addChallenge, completeTask, saveUserCode, getDashboardData, getLearningProfile, updateLearningProfile, getLearningRecommendations, getScaffoldLevel } from './user-service.js';
+import { getChallengeMetadata } from './question-bank.js';
 
 const execAsync = promisify(exec);
 
@@ -752,6 +753,368 @@ app.post('/api/user/save-code', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error saving code:', error);
     res.status(500).json({ error: 'Failed to save code', message: error.message });
+  }
+});
+
+// ============================================================================
+// LEARNING SYSTEM ENDPOINTS (Thinking-First Learning System)
+// ============================================================================
+
+// Get challenge metadata with pedagogy
+app.get('/api/challenge-metadata/:challengeId', async (req, res) => {
+  try {
+    const { challengeId } = req.params;
+    const metadata = getChallengeMetadata(challengeId);
+    res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('Error getting challenge metadata:', error);
+    res.status(500).json({ error: 'Failed to get challenge metadata', message: error.message });
+  }
+});
+
+// Create or get attempt
+app.post('/api/create-attempt', async (req, res) => {
+  try {
+    const { userId, challengeId } = req.body;
+    if (!userId || !challengeId) {
+      return res.status(400).json({ error: 'userId and challengeId are required' });
+    }
+    
+    const attemptId = await getOrCreateAttempt(userId, challengeId);
+    res.json({ success: true, attemptId });
+  } catch (error) {
+    console.error('Error creating attempt:', error);
+    res.status(500).json({ error: 'Failed to create attempt', message: error.message });
+  }
+});
+
+// Close attempt
+app.post('/api/close-attempt', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, status } = req.body;
+    if (!userId || !challengeId || !attemptId || !status) {
+      return res.status(400).json({ error: 'userId, challengeId, attemptId, and status are required' });
+    }
+    
+    const result = await closeAttempt(userId, challengeId, attemptId, status);
+    res.json(result);
+  } catch (error) {
+    console.error('Error closing attempt:', error);
+    res.status(500).json({ error: 'Failed to close attempt', message: error.message });
+  }
+});
+
+// Save prediction
+app.post('/api/save-prediction', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, prompt, response } = req.body;
+    if (!userId || !challengeId || !attemptId) {
+      return res.status(400).json({ error: 'userId, challengeId, and attemptId are required' });
+    }
+    
+    const result = await savePrediction(userId, challengeId, attemptId, {
+      prompt: prompt || 'What approach do you think will work?',
+      response
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving prediction:', error);
+    res.status(500).json({ error: 'Failed to save prediction', message: error.message });
+  }
+});
+
+// Save reflection
+app.post('/api/save-reflection', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, responses } = req.body;
+    if (!userId || !challengeId || !attemptId || !responses) {
+      return res.status(400).json({ error: 'userId, challengeId, attemptId, and responses are required' });
+    }
+    
+    const result = await saveReflection(userId, challengeId, attemptId, {
+      responses: Array.isArray(responses) ? responses : [responses]
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving reflection:', error);
+    res.status(500).json({ error: 'Failed to save reflection', message: error.message });
+  }
+});
+
+// Save rubric
+app.post('/api/save-rubric', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, rubric } = req.body;
+    if (!userId || !challengeId || !attemptId || !rubric) {
+      return res.status(400).json({ error: 'userId, challengeId, attemptId, and rubric are required' });
+    }
+    
+    const result = await saveRubric(userId, challengeId, attemptId, rubric);
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving rubric:', error);
+    res.status(500).json({ error: 'Failed to save rubric', message: error.message });
+  }
+});
+
+// Save transfer
+app.post('/api/save-transfer', async (req, res) => {
+  try {
+    const { userId, challengeId, transferChallengeId, attemptId, completed, transferType } = req.body;
+    if (!userId || !challengeId || !transferChallengeId || !attemptId) {
+      return res.status(400).json({ error: 'userId, challengeId, transferChallengeId, and attemptId are required' });
+    }
+    
+    const result = await saveTransfer(userId, challengeId, transferChallengeId, attemptId, completed || false, transferType || "near");
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving transfer:', error);
+    res.status(500).json({ error: 'Failed to save transfer', message: error.message });
+  }
+});
+
+// Get learning analytics
+app.get('/api/learning-analytics', async (req, res) => {
+  try {
+    const userId = req.query.userId || req.session?.userId;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    const profile = await getLearningProfile(userId);
+    res.json(profile);
+  } catch (error) {
+    console.error('Error getting learning analytics:', error);
+    res.status(500).json({ error: 'Failed to get learning analytics', message: error.message });
+  }
+});
+
+// Get learning recommendations
+app.get('/api/learning-recommendations', async (req, res) => {
+  try {
+    const userId = req.query.userId || req.session?.userId;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    const recommendations = await getLearningRecommendations(userId);
+    res.json({ success: true, recommendations });
+  } catch (error) {
+    console.error('Error getting learning recommendations:', error);
+    res.status(500).json({ error: 'Failed to get learning recommendations', message: error.message });
+  }
+});
+
+// Get scaffold level
+app.get('/api/scaffold-level', async (req, res) => {
+  try {
+    const userId = req.query.userId || req.session?.userId;
+    const challengeId = req.query.challengeId;
+    
+    if (!userId || !challengeId) {
+      return res.status(400).json({ error: 'userId and challengeId are required' });
+    }
+    
+    const scaffold = await getScaffoldLevel(userId, challengeId);
+    res.json({ success: true, ...scaffold });
+  } catch (error) {
+    console.error('Error getting scaffold level:', error);
+    res.status(500).json({ error: 'Failed to get scaffold level', message: error.message });
+  }
+});
+
+// Record hint usage
+app.post('/api/record-hint', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, hintLevel, hintType, hintContent } = req.body;
+    if (!userId || !challengeId || !attemptId || !hintLevel) {
+      return res.status(400).json({ error: 'userId, challengeId, attemptId, and hintLevel are required' });
+    }
+    
+    const result = await recordHintUsage(userId, challengeId, attemptId, hintLevel, hintType || "concept", hintContent || "");
+    res.json(result);
+  } catch (error) {
+    console.error('Error recording hint:', error);
+    res.status(500).json({ error: 'Failed to record hint', message: error.message });
+  }
+});
+
+// Save check-for-understanding response
+app.post('/api/save-check-response', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, stepId, response, correct, misconceptionDetected } = req.body;
+    if (!userId || !challengeId || !attemptId || !stepId || response === undefined) {
+      return res.status(400).json({ error: 'userId, challengeId, attemptId, stepId, and response are required' });
+    }
+    
+    const result = await saveCheckResponse(userId, challengeId, attemptId, stepId, response, correct || false, misconceptionDetected || null);
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving check response:', error);
+    res.status(500).json({ error: 'Failed to save check response', message: error.message });
+  }
+});
+
+// Classify error
+app.post('/api/classify-error', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, code, expectedOutput, actualOutput, errorMessage } = req.body;
+    if (!userId || !challengeId || !attemptId) {
+      return res.status(400).json({ error: 'userId, challengeId, and attemptId are required' });
+    }
+    
+    // Simple error classification (can be enhanced with AI later)
+    let errorType = "unknown";
+    let nextHintLevel = 2;
+    let message = "Let's review your approach step by step.";
+    
+    // Check for syntax errors
+    if (errorMessage && (
+      errorMessage.includes('SyntaxError') ||
+      errorMessage.includes('Unexpected token') ||
+      errorMessage.includes('Missing') ||
+      errorMessage.includes('Expected')
+    )) {
+      errorType = "syntax";
+      nextHintLevel = 2;
+      message = "There's a syntax error in your code. Check for missing brackets, semicolons, or typos.";
+    }
+    // Check for logic errors (wrong output)
+    else if (actualOutput !== expectedOutput && actualOutput !== undefined) {
+      errorType = "logic";
+      nextHintLevel = 2;
+      message = "Your approach is on the right track, but there's a logical issue. Think about the algorithm steps.";
+    }
+    // Check for runtime errors
+    else if (errorMessage && (
+      errorMessage.includes('TypeError') ||
+      errorMessage.includes('ReferenceError') ||
+      errorMessage.includes('Cannot read property')
+    )) {
+      errorType = "invariant";
+      nextHintLevel = 3;
+      message = "The data structure isn't maintaining the correct invariant. Review how you're storing and retrieving values.";
+    }
+    
+    // Record error classification
+    await recordErrorClassification(userId, challengeId, attemptId, errorType, errorMessage || "No error message", nextHintLevel);
+    
+    res.json({
+      success: true,
+      errorType,
+      nextHintLevel,
+      message
+    });
+  } catch (error) {
+    console.error('Error classifying error:', error);
+    res.status(500).json({ error: 'Failed to classify error', message: error.message });
+  }
+});
+
+// Get next hint level
+app.get('/api/next-hint-level', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId, errorType, retryCount } = req.query;
+    
+    if (!userId || !challengeId || !attemptId) {
+      return res.status(400).json({ error: 'userId, challengeId, and attemptId are required' });
+    }
+    
+    // Get attempt to find current hint level
+    const attempt = await getAttempt(userId, challengeId, attemptId);
+    if (!attempt) {
+      return res.status(404).json({ error: 'Attempt not found' });
+    }
+    
+    let currentLevel = attempt.hintLadder?.currentLevel || 0;
+    const retryCountInt = parseInt(retryCount || "0");
+    
+    // Determine next hint level based on error type and retry count
+    if (errorType === "syntax" && currentLevel < 2) {
+      currentLevel = 2;
+    } else if ((errorType === "logic" || errorType === "invariant") && currentLevel < 3) {
+      currentLevel = 3;
+    } else if (retryCountInt >= 3 && currentLevel < 4) {
+      currentLevel = 4;
+    } else {
+      currentLevel = Math.min(currentLevel + 1, 4);
+    }
+    
+    // Hint content would come from challenge metadata or AI generation
+    const hintTypes = {
+      1: { type: "concept", description: "Conceptual guidance without code" },
+      2: { type: "process", description: "Algorithm steps without code" },
+      3: { type: "skeleton", description: "Partial code structure" },
+      4: { type: "solution", description: "Complete solution with explanation" }
+    };
+    
+    res.json({
+      success: true,
+      level: currentLevel,
+      type: hintTypes[currentLevel].type,
+      description: hintTypes[currentLevel].description
+    });
+  } catch (error) {
+    console.error('Error getting next hint level:', error);
+    res.status(500).json({ error: 'Failed to get next hint level', message: error.message });
+  }
+});
+
+// Get learning artifacts
+app.get('/api/learning-artifacts', async (req, res) => {
+  try {
+    const { userId, challengeId, attemptId } = req.query;
+    if (!userId || !challengeId || !attemptId) {
+      return res.status(400).json({ error: 'userId, challengeId, and attemptId are required' });
+    }
+    
+    const artifacts = await getLearningArtifacts(userId, challengeId, attemptId);
+    res.json({ success: true, ...artifacts });
+  } catch (error) {
+    console.error('Error getting learning artifacts:', error);
+    res.status(500).json({ error: 'Failed to get learning artifacts', message: error.message });
+  }
+});
+
+// Runtime Lab demo endpoint (placeholder)
+app.get('/api/runtime-lab/:demoId', async (req, res) => {
+  try {
+    const { demoId } = req.params;
+    
+    // Static demo structures (can be enhanced later)
+    const demos = {
+      'js-runtime-explorer': {
+        demoId: 'js-runtime-explorer',
+        title: 'JavaScript Runtime Explorer',
+        objective: 'Understand execution context, call stack, heap, and closures',
+        steps: [
+          {
+            stepId: 'step-1',
+            title: 'Execution Context',
+            objective: 'Understand how JavaScript creates execution contexts',
+            whyThisStep: 'Before understanding closures, you need to understand how JavaScript manages scope and context',
+            checkForUnderstanding: 'What happens when a function is called?',
+            interactive: true
+          }
+        ],
+        transferChallenge: {
+          title: 'Trace this code execution',
+          code: 'function outer() { const x = 1; function inner() { console.log(x); } return inner; }'
+        }
+      }
+    };
+    
+    const demo = demos[demoId];
+    if (!demo) {
+      return res.status(404).json({ error: 'Demo not found' });
+    }
+    
+    res.json({ success: true, demo });
+  } catch (error) {
+    console.error('Error getting runtime lab demo:', error);
+    res.status(500).json({ error: 'Failed to get runtime lab demo', message: error.message });
   }
 });
 
