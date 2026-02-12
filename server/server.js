@@ -23,7 +23,7 @@ import {
 } from './openai-service.js';
 import { getFromCache, saveToCache, getCacheStats } from './cache-service.js';
 import { trackNextTime, getNextTimeCount, generateFingerprint, createAttempt, getOrCreateAttempt, getAttempt, closeAttempt, savePrediction, saveReflection, saveRubric, saveTransfer, getLearningArtifacts, recordHintUsage, saveCheckResponse, recordErrorClassification } from './tracking-service.js';
-import { getUserData, saveUserData, addChallenge, completeTask, saveUserCode, getDashboardData, getLearningProfile, updateLearningProfile, getLearningRecommendations, getScaffoldLevel } from './user-service.js';
+import { getUserData, saveUserData, addChallenge, completeTask, saveUserCode, getDashboardData, getLearningProfile, updateLearningProfile, getLearningRecommendations, getScaffoldLevel, updateMasteryAfterAttempt } from './user-service.js';
 import { getChallengeMetadata } from './question-bank.js';
 
 const execAsync = promisify(exec);
@@ -340,12 +340,13 @@ app.post('/api/validate-code', async (req, res) => {
 // Generate Hint
 app.post('/api/generate-hint', async (req, res) => {
   try {
-    const { userCode, tutorial, hintNumber, previousHints } = req.body;
-    if (!hintNumber) {
-      return res.status(400).json({ error: 'hintNumber is required' });
+    const { userCode, tutorial, hintNumber, previousHints, hintLevel, hintType } = req.body;
+    if (!hintNumber && !hintLevel) {
+      return res.status(400).json({ error: 'hintNumber or hintLevel is required' });
     }
-    console.log(`Generating hint ${hintNumber}`);
-    const hint = await generateHint(userCode, tutorial, hintNumber, previousHints || []);
+    const level = hintLevel || hintNumber;
+    console.log(`Generating hint level ${level} (type: ${hintType || 'auto'})`);
+    const hint = await generateHint(userCode, tutorial, hintNumber || level, previousHints || [], level, hintType);
     res.json({ success: true, hint });
   } catch (error) {
     console.error('Error:', error);
@@ -797,6 +798,12 @@ app.post('/api/close-attempt', async (req, res) => {
     }
     
     const result = await closeAttempt(userId, challengeId, attemptId, status);
+    
+    // Update mastery after completion
+    if (status === "completed") {
+      await updateMasteryAfterAttempt(userId, challengeId, attemptId);
+    }
+    
     res.json(result);
   } catch (error) {
     console.error('Error closing attempt:', error);
@@ -1097,11 +1104,81 @@ app.get('/api/runtime-lab/:demoId', async (req, res) => {
             whyThisStep: 'Before understanding closures, you need to understand how JavaScript manages scope and context',
             checkForUnderstanding: 'What happens when a function is called?',
             interactive: true
+          },
+          {
+            stepId: 'step-2',
+            title: 'Call Stack',
+            objective: 'Visualize how functions are added and removed from the call stack',
+            whyThisStep: 'The call stack shows the order of function execution',
+            checkForUnderstanding: 'What is the current call stack when a function calls another function?',
+            interactive: true
+          },
+          {
+            stepId: 'step-3',
+            title: 'Closures',
+            objective: 'Understand how closures capture variables from outer scopes',
+            whyThisStep: 'Closures are fundamental to understanding JavaScript scope',
+            checkForUnderstanding: 'What variables are accessible in a closure?',
+            interactive: true
           }
         ],
         transferChallenge: {
           title: 'Trace this code execution',
           code: 'function outer() { const x = 1; function inner() { console.log(x); } return inner; }'
+        }
+      },
+      'async-timeline': {
+        demoId: 'async-timeline',
+        title: 'Async Timeline',
+        objective: 'Understand the event loop, microtasks, and promise execution',
+        steps: [
+          {
+            stepId: 'step-1',
+            title: 'Event Loop',
+            objective: 'Understand how JavaScript handles asynchronous operations',
+            whyThisStep: 'The event loop is key to understanding async JavaScript',
+            checkForUnderstanding: 'What is the order of execution for async code?',
+            interactive: true
+          },
+          {
+            stepId: 'step-2',
+            title: 'Microtasks vs Macrotasks',
+            objective: 'Learn the difference between microtasks and macrotasks',
+            whyThisStep: 'Understanding task queues helps debug async behavior',
+            checkForUnderstanding: 'Which executes first: Promise.then or setTimeout?',
+            interactive: true
+          }
+        ],
+        transferChallenge: {
+          title: 'Predict the output',
+          code: 'console.log(1); Promise.resolve().then(() => console.log(2)); setTimeout(() => console.log(3), 0); console.log(4);'
+        }
+      },
+      'state-derived': {
+        demoId: 'state-derived',
+        title: 'State & Derived State',
+        objective: 'Understand state machines and derived computation',
+        steps: [
+          {
+            stepId: 'step-1',
+            title: 'State Machine',
+            objective: 'Learn how state machines model application state',
+            whyThisStep: 'State machines help manage complex application logic',
+            checkForUnderstanding: 'What are the possible states and transitions?',
+            interactive: true
+          },
+          {
+            stepId: 'step-2',
+            title: 'Derived State',
+            objective: 'Understand how to compute state from other state',
+            whyThisStep: 'Derived state reduces redundancy and keeps data consistent',
+            checkForUnderstanding: 'How do you compute derived values?',
+            interactive: true
+          }
+        ],
+        transferChallenge: {
+          title: 'Build a state machine',
+          code: '// Create a state machine for a toggle button'
         }
       }
     };

@@ -3109,9 +3109,50 @@ footer {
 button:focus,
 input:focus,
 textarea:focus,
-select:focus {
+select:focus,
+a:focus {
     outline: 3px solid var(--neon);
     outline-offset: 2px;
+}
+
+/* Skip to main content link for screen readers */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--navy);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Modal close button */
+.modal-close {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid rgba(30, 42, 58, 0.2);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+.modal-close:hover {
+    background: rgba(30, 42, 58, 0.05);
+}
+
+/* Ensure modals are accessible */
+.modal[aria-hidden="true"] {
+    display: none;
+}
+
+.modal[aria-hidden="false"] {
+    display: flex;
 }
 
 /* High contrast mode support */
@@ -3130,6 +3171,110 @@ select:focus {
     }
 }
 
+/* Runtime Lab Styles */
+.runtime-lab-view {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.runtime-lab-container h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+}
+
+.demo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 32px;
+}
+
+.demo-card {
+    background: white;
+    border: 2px solid rgba(30, 42, 58, 0.1);
+    border-radius: 12px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.demo-card:hover {
+    border-color: var(--neon);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(30, 42, 58, 0.1);
+}
+
+.demo-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 0 0 8px 0;
+}
+
+.demo-card p {
+    color: var(--text-muted);
+    margin: 0 0 12px 0;
+    line-height: 1.6;
+}
+
+.demo-badge {
+    display: inline-block;
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--neon);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.runtime-demo-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.demo-step {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    margin-top: 24px;
+    box-shadow: 0 4px 16px rgba(30, 42, 58, 0.1);
+}
+
+.step-header {
+    margin-bottom: 24px;
+}
+
+.step-header span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.step-header h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 8px 0 0 0;
+}
+
+.step-content {
+    line-height: 1.8;
+}
+
+.step-content .objective {
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(30, 42, 58, 0.05);
+    border-radius: 6px;
+}
+
 @media (max-width: 1024px) {
     .editor-layout {
         flex-direction: column;
@@ -3146,5 +3291,9 @@ select:focus {
         bottom: 0;
         left: 0;
         right: 0;
+    }
+    
+    .demo-grid {
+        grid-template-columns: 1fr;
     }
 }

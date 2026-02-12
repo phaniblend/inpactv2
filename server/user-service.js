@@ -357,6 +357,51 @@ export async function updateLearningProfile(userId, metrics) {
   }
 }
 
+// Update mastery after attempt completion
+export async function updateMasteryAfterAttempt(userId, challengeId, attemptId) {
+  try {
+    const { getAttempt } = await import('./tracking-service.js');
+    const { getChallengeMetadata } = await import('./question-bank.js');
+    
+    const attempt = await getAttempt(userId, challengeId, attemptId);
+    if (!attempt || attempt.status !== "completed") return;
+    
+    const metadata = getChallengeMetadata(challengeId);
+    const concepts = metadata.prerequisites || [challengeId]; // Use challengeId as fallback
+    
+    // Calculate mastery for each concept
+    const conceptMastery = {};
+    for (const concept of concepts) {
+      const mastery = await calculateConceptMastery(userId, concept);
+      conceptMastery[concept] = mastery;
+    }
+    
+    // Calculate aggregate metrics
+    const hintDependency = attempt.hintLadder?.currentLevel ? 
+      (attempt.hintLadder.currentLevel / (attempt.hintLadder.maxLevel || 4)) : 0;
+    
+    const predictionAccuracy = attempt.predictions.length > 0 ?
+      attempt.predictions.filter(p => p.accuracy === true).length / attempt.predictions.length : 0;
+    
+    const transferSuccess = attempt.transfers.length > 0 ?
+      attempt.transfers.filter(t => t.completed).length / attempt.transfers.length : 0;
+    
+    // Update learning profile
+    await updateLearningProfile(userId, {
+      conceptMastery,
+      hintDependency,
+      predictionAccuracy,
+      transferSuccessRate: transferSuccess,
+      averageCompletionTime: attempt.metrics?.timeToComplete || 0
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating mastery after attempt:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Get learning recommendations based on analytics
 export async function getLearningRecommendations(userId) {
   try {

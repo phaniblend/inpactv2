@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="container">
         <!-- Navigation Bar -->
         <nav id="topNav" class="top-nav">
@@ -33,6 +34,9 @@
                 <button id="dashboardBtn" class="nav-link-btn hidden" title="Dashboard">
                     <span class="nav-icon">📊</span> Dashboard
                 </button>
+                <button id="runtimeLabBtn" class="nav-link-btn" title="Runtime Lab">
+                    <span class="nav-icon">🔬</span> Runtime Lab
+                </button>
                 <button id="logoutBtn" class="nav-link-btn hidden" title="Sign out">
                     <span class="nav-icon">🚪</span> Sign Out
                 </button>
@@ -46,7 +50,7 @@
             <p class="subtitle">Learn by doing. Remember by understanding.</p>
         </header>
 
-        <main>
+        <main id="main-content" role="main">
             <!-- ===================================================================== -->
             <!-- QUESTION BANK: Curated Challenges -->
             <!-- ===================================================================== -->

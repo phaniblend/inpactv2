@@ -444,33 +444,57 @@ Return ONLY JSON:
 // HINT GENERATION
 // ============================================================================
 
-export async function generateHint(userCode, tutorial, hintNumber, previousHints) {
+export async function generateHint(userCode, tutorial, hintNumber, previousHints, hintLevel = null, hintType = null) {
   try {
     const client = getAnthropicClient();
 
     const solutionScreen = tutorial.screens?.find(s => s.screenType === 'solution');
     const solution = solutionScreen?.content?.code || '';
 
+    // Define hint level instructions
+    const hintLevelInstructions = {
+      1: {
+        type: "concept",
+        instruction: "Give a CONCEPTUAL hint only - NO code. Explain the mental model or approach in plain English. Help them understand the 'why' and 'what' without showing how. Use analogies or real-world examples."
+      },
+      2: {
+        type: "process",
+        instruction: "Give a PROCESS hint - explain the algorithm steps in plain English, but NO code. Break down the approach into clear steps. Help them understand the sequence of operations."
+      },
+      3: {
+        type: "skeleton",
+        instruction: "Give a SKELETON hint - show partial code structure with key parts missing. Include function signature, main structure, and comments indicating where logic goes, but leave the core logic for them to fill."
+      },
+      4: {
+        type: "solution",
+        instruction: "Reveal the FULL SOLUTION with complete code and detailed explanation. Walk through how it works step by step. This is the final hint level."
+      }
+    };
+
+    const level = hintLevel || Math.min(hintNumber, 4);
+    const levelInfo = hintLevelInstructions[level] || hintLevelInstructions[1];
+    const type = hintType || levelInfo.type;
+
     const message = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 300,
+      max_tokens: level === 4 ? 800 : 400,
       messages: [
         {
           role: "user",
-          content: `Give hint ${hintNumber}/3 for this code attempt.
+          content: `Give a ${levelInfo.type.toUpperCase()} hint (Level ${level}/4) for this code attempt.
+
+${levelInfo.instruction}
 
 Current code:
 ${userCode}
 
-Solution (don't reveal directly):
+Solution (use as reference, ${level < 4 ? 'do NOT reveal directly' : 'reveal with explanation'}):
 ${solution}
 
 Previous hints: ${JSON.stringify(previousHints)}
 
-Hint 1 = general direction, Hint 2 = more specific, Hint 3 = nearly there.
-
 Return ONLY JSON:
-{"hint": "...", "encouragement": "..."}`
+{"hint": "...", "encouragement": "...", "type": "${type}"}`
         }
       ]
     });

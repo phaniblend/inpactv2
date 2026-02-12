@@ -161,6 +161,7 @@ const topNav = document.getElementById('topNav');
 const homeBtn = document.getElementById('homeBtn');
 const loginBtn = document.getElementById('loginBtn');
 const dashboardBtn = document.getElementById('dashboardBtn');
+const runtimeLabBtn = document.getElementById('runtimeLabBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const userInfo = document.getElementById('userInfo');
 const userAvatar = document.getElementById('userAvatar');
@@ -497,6 +498,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashboardBtn) {
         dashboardBtn.addEventListener('click', () => {
             showDashboard();
+        });
+    }
+    
+    if (runtimeLabBtn) {
+        runtimeLabBtn.addEventListener('click', () => {
+            showRuntimeLab();
         });
     }
     
@@ -918,6 +925,18 @@ async function displayObjectives(data) {
         await initializeAttempt(challengeId);
         // Display pedagogy metadata
         await displayPedagogyMetadata(challengeId);
+        
+        // Get and apply scaffold level
+        try {
+            const userId = currentUser?.id || 'anonymous';
+            const scaffoldResponse = await fetch(`/api/scaffold-level?userId=${userId}&challengeId=${challengeId}`);
+            const scaffoldData = await scaffoldResponse.json();
+            if (scaffoldData.success) {
+                await applyScaffoldRules(scaffoldData.level, scaffoldData.rules);
+            }
+        } catch (error) {
+            console.error('Error getting scaffold level:', error);
+        }
     }
     
     mainHeader.classList.add('hidden');
@@ -1022,7 +1041,26 @@ async function displayPedagogyMetadata(challengeId) {
 // Show "Why this step?" section
 function showWhyThisStep(stepIndex) {
     const currentScreen = currentTutorial?.screens?.[stepIndex];
-    if (!currentScreen || !currentScreen.whyThisStep) return;
+    if (!currentScreen) return;
+    
+    // Try to get whyThisStep from screen or generate from metadata
+    let whyText = currentScreen.whyThisStep;
+    if (!whyText && currentScreen.screenType) {
+        // Generate contextual why based on screen type
+        const whyTexts = {
+            'problem-context': 'Understanding the problem context helps you see the bigger picture before diving into code.',
+            'input-output': 'Seeing concrete examples helps you understand what the function should do.',
+            'approach': 'Learning the approach before coding helps you build the right mental model.',
+            'signature': 'Understanding the function signature clarifies what inputs and outputs you\'re working with.',
+            'data-structure': 'Choosing the right data structure is crucial for efficient solutions.',
+            'iteration': 'Understanding iteration patterns helps you process data systematically.',
+            'core-logic': 'The core logic is where the main problem-solving happens.',
+            'implementation': 'Now you get to build it yourself and apply what you\'ve learned.'
+        };
+        whyText = whyTexts[currentScreen.screenType] || 'This step builds on previous concepts to deepen your understanding.';
+    }
+    
+    if (!whyText) return;
     
     let whySection = document.getElementById('whyThisStep');
     if (!whySection) {
@@ -1038,10 +1076,48 @@ function showWhyThisStep(stepIndex) {
     }
     
     whySection.innerHTML = `
-        <h4>Why this step?</h4>
-        <p>${currentScreen.whyThisStep}</p>
+        <div style="display: flex; align-items: start; gap: 12px;">
+            <span style="font-size: 1.5em;">💭</span>
+            <div>
+                <h4 style="margin: 0 0 8px 0; color: var(--navy);">Why this step?</h4>
+                <p style="margin: 0; color: var(--text); line-height: 1.6;">${whyText}</p>
+            </div>
+        </div>
     `;
     whySection.classList.remove('hidden');
+}
+
+// Apply scaffold rules based on level
+async function applyScaffoldRules(scaffoldLevel, rules) {
+    // Apply prediction requirement
+    if (!rules.predictionRequired) {
+        // Hide prediction gate if not required
+        const predictionGate = document.getElementById('predictionGate');
+        if (predictionGate) {
+            predictionGate.style.display = 'none';
+        }
+    }
+    
+    // Apply hint availability
+    const hintBtn = document.getElementById('showHintBtn');
+    if (hintBtn) {
+        if (rules.hintAvailability === "limited") {
+            hintBtn.dataset.maxHints = "2";
+        } else if (rules.hintAvailability === "on-demand") {
+            hintBtn.dataset.maxHints = "3";
+        } else {
+            hintBtn.dataset.maxHints = "4";
+        }
+    }
+    
+    // Apply guided breakdown
+    if (!rules.guidedBreakdown) {
+        // Skip to independent build phase
+        // This would be handled in the tutorial flow
+    }
+    
+    // Store scaffold rules for later use
+    window.currentScaffoldRules = rules;
 }
 
 // Show prediction prompt before hint/solution
@@ -1051,6 +1127,17 @@ async function showPredictionPrompt() {
         const challengeId = getChallengeIdFromTask(currentTask, currentTechnology);
         if (challengeId) {
             await initializeAttempt(challengeId);
+        }
+    }
+    
+    // Check if prediction gate is required by recommendations
+    if (window.predictionGateRequired && window.predictionGateCount > 0) {
+        // Prediction is required - show it
+    } else {
+        // Check scaffold rules
+        const scaffoldRules = window.currentScaffoldRules;
+        if (scaffoldRules && !scaffoldRules.predictionRequired) {
+            return; // Skip prediction if not required
         }
     }
     
@@ -1101,16 +1188,61 @@ function createPredictionModal() {
     const modal = document.createElement('div');
     modal.id = 'predictionModal';
     modal.className = 'modal hidden';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-labelledby', 'prediction-title');
+    modal.setAttribute('aria-modal', 'true');
     modal.innerHTML = `
         <div class="modal-content">
-            <h3>Check your thinking</h3>
+            <h3 id="prediction-title">Check your thinking</h3>
             <p>Before we show you the solution, what approach do you think will work?</p>
-            <textarea id="predictionResponse" rows="4" placeholder="Describe your approach..."></textarea>
+            <textarea id="predictionResponse" rows="4" placeholder="Describe your approach..." aria-label="Your prediction"></textarea>
             <button id="submitPrediction">Submit</button>
+            <button id="closePredictionModal" class="modal-close" aria-label="Close dialog">Cancel</button>
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Add keyboard navigation
+    setupModalKeyboardNavigation(modal);
+    
     showPredictionPrompt();
+}
+
+// Setup keyboard navigation for modals
+function setupModalKeyboardNavigation(modal) {
+    const closeBtn = modal.querySelector('.modal-close, [aria-label*="Close"]');
+    const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+    
+    // Focus trap
+    modal.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            if (e.shiftKey) {
+                if (document.activeElement === firstFocusable) {
+                    e.preventDefault();
+                    lastFocusable.focus();
+                }
+            } else {
+                if (document.activeElement === lastFocusable) {
+                    e.preventDefault();
+                    firstFocusable.focus();
+                }
+            }
+        }
+        if (e.key === 'Escape') {
+            modal.classList.add('hidden');
+            if (closeBtn) closeBtn.click();
+        }
+    });
+    
+    // Focus first element when modal opens
+    const observer = new MutationObserver(() => {
+        if (!modal.classList.contains('hidden') && firstFocusable) {
+            setTimeout(() => firstFocusable.focus(), 100);
+        }
+    });
+    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
 }
 
 // Show reflection screen after completion
@@ -1206,10 +1338,181 @@ async function checkAndShowReflectionIfComplete() {
     
     const allCompleted = allTasks.every(task => completedTasks.includes(task));
     if (allCompleted && currentAttemptId) {
+        // Get and apply recommendations
+        await checkAndApplyRecommendations();
+        
         // Small delay to let user see completion message
         setTimeout(() => {
             showReflectionScreen();
         }, 1500);
+    }
+}
+
+// Check and apply learning recommendations
+async function checkAndApplyRecommendations() {
+    if (!currentUser?.id) return;
+    
+    try {
+        const response = await fetch(`/api/learning-recommendations?userId=${currentUser.id}`);
+        const data = await response.json();
+        
+        if (data.success && data.recommendations && data.recommendations.length > 0) {
+            // Show recommendations
+            showRecommendations(data.recommendations);
+            
+            // Apply recommendations automatically
+            for (const rec of data.recommendations) {
+                await applyRecommendation(rec);
+            }
+        }
+    } catch (error) {
+        console.error('Error getting recommendations:', error);
+    }
+}
+
+// Show recommendations to user
+function showRecommendations(recommendations) {
+    // Create recommendations panel
+    let recPanel = document.getElementById('recommendationsPanel');
+    if (!recPanel) {
+        recPanel = document.createElement('div');
+        recPanel.id = 'recommendationsPanel';
+        recPanel.className = 'recommendations-panel';
+        recPanel.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: 2px solid var(--neon);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(30, 42, 58, 0.3);
+            z-index: 10001;
+        `;
+        document.body.appendChild(recPanel);
+    }
+    
+    const priorityColors = {
+        high: '#f87171',
+        medium: '#fbbf24',
+        low: '#60a5fa'
+    };
+    
+    let html = '<h3 style="margin: 0 0 16px 0; color: var(--navy);">💡 Learning Recommendations</h3>';
+    recommendations.forEach((rec, i) => {
+        html += `
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(30, 42, 58, 0.05); border-radius: 6px; border-left: 3px solid ${priorityColors[rec.priority] || '#60a5fa'};">
+                <strong style="color: ${priorityColors[rec.priority] || '#60a5fa'}; font-size: 0.85rem; text-transform: uppercase;">${rec.priority} Priority</strong>
+                <p style="margin: 8px 0 0 0; color: var(--text); font-size: 0.95rem;">${rec.message}</p>
+            </div>
+        `;
+    });
+    html += '<button onclick="document.getElementById(\'recommendationsPanel\').remove()" style="margin-top: 12px; background: var(--navy); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; width: 100%;">Got it</button>';
+    
+    recPanel.innerHTML = html;
+    recPanel.style.display = 'block';
+}
+
+// Apply recommendation action
+async function applyRecommendation(recommendation) {
+    const action = recommendation.action;
+    
+    switch (action.type) {
+        case "require-prediction":
+            // Set prediction gate for next N challenges
+            window.predictionGateRequired = true;
+            window.predictionGateCount = action.duration || 3;
+            break;
+            
+        case "inject-transfer":
+            // Inject transfer challenges (handled in micro-transfer system)
+            window.injectTransferChallenges = true;
+            window.transferChallengeCount = action.count || 2;
+            break;
+            
+        case "suggest-challenge":
+        case "suggest-challenges":
+            // Store suggested challenges for later
+            window.suggestedChallenges = action.challengeIds || [];
+            break;
+            
+        default:
+            console.log('Recommendation action not implemented:', action.type);
+    }
+}
+
+// Show misconception-aware feedback
+async function showMisconceptionFeedbackIfNeeded(errorType, validation) {
+    const challengeId = getChallengeIdFromTask(currentTask, currentTechnology);
+    if (!challengeId || !currentAttemptId) return;
+    
+    try {
+        const response = await fetch(`/api/challenge-metadata/${challengeId}`);
+        const data = await response.json();
+        
+        if (data.success && data.metadata && data.metadata.misconceptions) {
+            const misconceptions = data.metadata.misconceptions;
+            
+            // Try to detect misconception from error/feedback
+            const errorText = JSON.stringify(validation?.feedback || validation?.message || '').toLowerCase();
+            
+            // Simple pattern matching for misconceptions (can be enhanced with AI)
+            let detectedMisconception = null;
+            for (const misconception of misconceptions) {
+                const misconceptionLower = misconception.toLowerCase();
+                // Check if error text suggests this misconception
+                if (misconceptionLower.includes('nested loop') && errorText.includes('loop')) {
+                    detectedMisconception = misconception;
+                    break;
+                } else if (misconceptionLower.includes('hash map') && (errorText.includes('object') || errorText.includes('map'))) {
+                    detectedMisconception = misconception;
+                    break;
+                } else if (misconceptionLower.includes('always') && errorText.includes('wrong')) {
+                    detectedMisconception = misconception;
+                    break;
+                }
+            }
+            
+            if (detectedMisconception) {
+                // Show targeted misconception feedback
+                const output = document.getElementById('editorOutputContent');
+                if (output) {
+                    const currentContent = output.innerHTML;
+                    output.innerHTML = currentContent + `
+                        <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; padding: 12px; margin-top: 12px; border-radius: 4px;">
+                            <strong style="color: #ff9800;">💡 Common Misconception Detected:</strong>
+                            <p style="margin: 8px 0 0 0; color: var(--text);">${detectedMisconception}</p>
+                            <p style="margin: 8px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">
+                                This is a common misunderstanding. Let's clarify: ${detectedMisconception.split('(')[1]?.split(')')[0] || 'Review the concept and try again.'}
+                            </p>
+                        </div>
+                    `;
+                }
+                
+                // Save check response with misconception
+                try {
+                    const userId = currentUser?.id || 'anonymous';
+                    await fetch('/api/save-check-response', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId,
+                            challengeId,
+                            attemptId: currentAttemptId,
+                            stepId: currentAtomicTask || 'unknown',
+                            response: errorText,
+                            correct: false,
+                            misconceptionDetected: detectedMisconception
+                        })
+                    });
+                } catch (error) {
+                    console.error('Error saving check response:', error);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error checking misconceptions:', error);
     }
 }
 
@@ -1605,6 +1908,9 @@ function renderScreen(index) {
     
     stepContent.innerHTML = screenHTML;
     
+    // Show "Why this step?" for pedagogy visibility
+    showWhyThisStep(index);
+    
     // Setup mentor button (now in navigation)
     const askMentorBtn = document.getElementById('askMentorBtn');
     if (askMentorBtn) {
@@ -1616,8 +1922,107 @@ function renderScreen(index) {
         setupPracticeScreen(screen);
     }
     
+    // Check for micro-transfers during guided construction
+    checkAndShowMicroTransfer(screen, index);
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// Check and show micro-transfer if available
+async function checkAndShowMicroTransfer(screen, screenIndex) {
+    const challengeId = getChallengeIdFromTask(currentTask, currentTechnology);
+    if (!challengeId) return;
+    
+    try {
+        const response = await fetch(`/api/challenge-metadata/${challengeId}`);
+        const data = await response.json();
+        
+        if (data.success && data.metadata?.phases?.guidedConstruction?.microTransfers) {
+            const microTransfers = data.metadata.phases.guidedConstruction.microTransfers;
+            
+            // Find micro-transfer for this step
+            const microTransfer = microTransfers.find(mt => 
+                mt.stepId === `step-${screenIndex + 1}` || 
+                screen.screenType === 'core-logic' || 
+                screen.screenType === 'implementation'
+            );
+            
+            if (microTransfer) {
+                // Show micro-transfer prompt
+                setTimeout(() => {
+                    showMicroTransferPrompt(microTransfer);
+                }, 2000); // Show after 2 seconds
+            }
+        }
+    } catch (error) {
+        console.error('Error checking micro-transfers:', error);
+    }
+}
+
+// Show micro-transfer prompt
+function showMicroTransferPrompt(microTransfer) {
+    const stepContent = document.getElementById('stepContent');
+    if (!stepContent) return;
+    
+    const microTransferDiv = document.createElement('div');
+    microTransferDiv.className = 'micro-transfer-prompt';
+    microTransferDiv.style.cssText = `
+        background: rgba(0, 255, 136, 0.1);
+        border-left: 3px solid var(--neon);
+        padding: 16px;
+        margin: 20px 0;
+        border-radius: 6px;
+    `;
+    
+    microTransferDiv.innerHTML = `
+        <h4 style="margin: 0 0 8px 0; color: var(--navy);">🔄 Quick Transfer Challenge</h4>
+        <p style="margin: 0 0 12px 0; color: var(--text);">${microTransfer.prompt}</p>
+        <div style="background: rgba(30, 42, 58, 0.05); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <strong>Challenge:</strong> ${microTransfer.challenge.task}
+        </div>
+        <p style="margin: 0 0 12px 0; font-size: 0.9rem; color: var(--text-muted);">
+            ${microTransfer.challenge.relation}
+        </p>
+        <button onclick="handleMicroTransfer('${microTransfer.challenge.task}', '${microTransfer.transferType}')" 
+                style="background: var(--navy); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+            Try This Transfer Challenge
+        </button>
+        <button onclick="this.parentElement.remove()" 
+                style="background: transparent; color: var(--text-muted); border: 1px solid rgba(30, 42, 58, 0.2); padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-left: 8px;">
+            Skip for Now
+        </button>
+    `;
+    
+    stepContent.appendChild(microTransferDiv);
+}
+
+// Handle micro-transfer challenge (global for onclick)
+window.handleMicroTransfer = async function(transferTask, transferType) {
+    // Save transfer attempt
+    if (currentAttemptId) {
+        try {
+            const userId = currentUser?.id || 'anonymous';
+            const challengeId = getChallengeIdFromTask(currentTask, currentTechnology);
+            await fetch('/api/save-transfer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    challengeId: challengeId || currentTask,
+                    transferChallengeId: `transfer-${Date.now()}`,
+                    attemptId: currentAttemptId,
+                    completed: false, // Will be updated when they complete it
+                    transferType: transferType || "near"
+                })
+            });
+        } catch (error) {
+            console.error('Error saving transfer:', error);
+        }
+    }
+    
+    // Show transfer challenge (could open in new tab or inline)
+    alert(`Transfer Challenge: ${transferTask}\n\nThis will help you apply the same pattern to a similar problem.`);
+};
 
 function getScreenHTML(screen, isEditorView = false) {
     const type = screen.screenType;
@@ -1976,6 +2381,12 @@ async function validateCodeForEditor(userCode, screen) {
         if (output) {
             if (validation && validation.correct) {
                 output.innerHTML = '<span style="color: #00ff88;">✅ Correct! Great job! Your code meets all the requirements.</span>';
+                
+                // Reset retry count and error state on success
+                retryCount = 0;
+                lastErrorType = null;
+                // Don't reset hint level - keep it for next task
+                
                 if (currentAtomicTask && !completedTasks.includes(currentAtomicTask)) {
                     completedTasks.push(currentAtomicTask);
                     // Track task completion if user is authenticated
@@ -1986,16 +2397,98 @@ async function validateCodeForEditor(userCode, screen) {
                     checkAndShowReflectionIfComplete();
                 }
                 updateEditorProgressIndicator();
-            } else if (validation && validation.feedback && validation.feedback.length > 0) {
-                const feedbackMessages = validation.feedback.map(f => f.message || f).join('\n');
-                output.innerHTML = `<div style="color: #f87171;">
-                    <strong>⚠️ Not quite right. Here's what to improve:</strong><br>
-                    ${feedbackMessages.split('\n').map(msg => `• ${msg}`).join('<br>')}
-                    ${validation.suggestion ? `<br><br><strong>Suggestion:</strong> ${validation.suggestion}` : ''}
-                    ${validation.encouragement ? `<br><br><em>${validation.encouragement}</em>` : ''}
-                </div>`;
             } else {
-                output.innerHTML = `<span style="color: #f87171;">⚠️ ${validation?.message || 'Not quite right. Keep trying!'}</span>`;
+                // Code is incorrect - classify error and provide feedback
+                retryCount++;
+                
+                // Classify error
+                let errorType = "logic";
+                let errorMessage = validation?.message || 'Not quite right. Keep trying!';
+                
+                // Try to classify based on validation feedback
+                if (validation?.feedback) {
+                    const feedbackText = JSON.stringify(validation.feedback).toLowerCase();
+                    if (feedbackText.includes('syntax') || feedbackText.includes('parse') || feedbackText.includes('unexpected')) {
+                        errorType = "syntax";
+                    } else if (feedbackText.includes('undefined') || feedbackText.includes('null') || feedbackText.includes('cannot read')) {
+                        errorType = "invariant";
+                    } else if (feedbackText.includes('edge') || feedbackText.includes('boundary') || feedbackText.includes('empty')) {
+                        errorType = "edge-case";
+                    }
+                }
+                
+                lastErrorType = errorType;
+                
+                // Classify error via API
+                if (currentAttemptId) {
+                    try {
+                        const userId = currentUser?.id || 'anonymous';
+                        const classifyResponse = await fetch('/api/classify-error', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId,
+                                challengeId: getChallengeIdFromTask(currentTask, currentTechnology) || currentTask,
+                                attemptId: currentAttemptId,
+                                code: userCode,
+                                expectedOutput: validation?.expectedOutput,
+                                actualOutput: validation?.actualOutput,
+                                errorMessage: errorMessage
+                            })
+                        });
+                        
+                        if (classifyResponse.ok) {
+                            const classifyData = await classifyResponse.json();
+                            if (classifyData.success) {
+                                errorType = classifyData.errorType;
+                                errorMessage = classifyData.message;
+                                // Update hint level based on error classification
+                                if (classifyData.nextHintLevel && classifyData.nextHintLevel > currentHintLevel) {
+                                    currentHintLevel = classifyData.nextHintLevel - 1; // Will increment on next hint request
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error classifying error:', error);
+                    }
+                }
+                
+                // Show error feedback with classification
+                const errorMessages = {
+                    syntax: "There's a syntax error in your code. Check for typos, missing brackets, or incorrect syntax.",
+                    logic: "Your approach is on the right track, but there's a logical issue. Review your algorithm steps.",
+                    invariant: "The data structure isn't maintaining the correct state. Review how you're storing and retrieving values.",
+                    "edge-case": "Your code works for most cases, but consider edge cases like empty inputs or boundary values.",
+                    unknown: "Not quite right. Let's review your approach."
+                };
+                
+                const baseMessage = errorMessages[errorType] || errorMessages.unknown;
+                
+                if (validation && validation.feedback && validation.feedback.length > 0) {
+                    const feedbackMessages = validation.feedback.map(f => f.message || f).join('\n');
+                    output.innerHTML = `<div style="color: #f87171;">
+                        <strong>⚠️ ${baseMessage}</strong><br><br>
+                        <strong>Feedback:</strong><br>
+                        ${feedbackMessages.split('\n').map(msg => `• ${msg}`).join('<br>')}
+                        ${validation.suggestion ? `<br><br><strong>Suggestion:</strong> ${validation.suggestion}` : ''}
+                        ${validation.encouragement ? `<br><br><em>${validation.encouragement}</em>` : ''}
+                        <br><br>
+                        <button onclick="requestHintForEditor(monacoEditor?.getValue() || '', null)" style="background: var(--navy); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 8px;">
+                            💡 Get Hint (Level ${Math.min(currentHintLevel + 1, 4)}/4)
+                        </button>
+                    </div>`;
+                } else {
+                    output.innerHTML = `<div style="color: #f87171;">
+                        <strong>⚠️ ${baseMessage}</strong><br>
+                        <p>${errorMessage}</p>
+                        <button onclick="requestHintForEditor(monacoEditor?.getValue() || '', null)" style="background: var(--navy); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 8px;">
+                            💡 Get Hint (Level ${Math.min(currentHintLevel + 1, 4)}/4)
+                        </button>
+                    </div>`;
+                }
+                
+                // Check for misconceptions if we have metadata
+                await showMisconceptionFeedbackIfNeeded(errorType, validation);
             }
         }
     } catch (error) {
@@ -2013,15 +2506,21 @@ async function validateCodeForEditor(userCode, screen) {
     }
 }
 
+// Hint ladder state
+let currentHintLevel = 0;
+let retryCount = 0;
+let lastErrorType = null;
+
+// Reset hint state for new task
+function resetHintState() {
+    currentHintLevel = 0;
+    retryCount = 0;
+    lastErrorType = null;
+    hintCount = 0;
+    previousHints = [];
+}
+
 async function requestHintForEditor(userCode, screen) {
-    if (hintCount >= 3) {
-        const output = document.getElementById('editorOutputContent');
-        if (output) {
-            output.innerHTML = '<span style="color: #666;">You\'ve used all 3 hints. Try working through the problem step by step!</span>';
-        }
-        return;
-    }
-    
     const hintBtn = document.getElementById('showHintBtn');
     if (hintBtn) {
         hintBtn.disabled = true;
@@ -2031,15 +2530,40 @@ async function requestHintForEditor(userCode, screen) {
     showGlobalLoading();
     
     try {
-        hintCount++;
+        // Get next hint level based on error type and retry count
+        let nextLevel = currentHintLevel + 1;
+        if (lastErrorType) {
+            const response = await fetch(`/api/next-hint-level?userId=${currentUser?.id || 'anonymous'}&challengeId=${getChallengeIdFromTask(currentTask, currentTechnology) || ''}&attemptId=${currentAttemptId || ''}&errorType=${lastErrorType}&retryCount=${retryCount}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    nextLevel = data.level;
+                }
+            }
+        }
+        
+        // Cap at level 4 (full solution)
+        nextLevel = Math.min(nextLevel, 4);
+        currentHintLevel = nextLevel;
+        
+        const hintTypes = {
+            1: { type: "concept", name: "Concept Hint" },
+            2: { type: "process", name: "Process Hint" },
+            3: { type: "skeleton", name: "Skeleton Hint" },
+            4: { type: "solution", name: "Full Solution" }
+        };
+        
+        // Generate hint with appropriate level
         const response = await fetch('/api/generate-hint', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userCode: userCode || '',
                 tutorial: currentTutorial,
-                hintNumber: hintCount,
-                previousHints: previousHints
+                hintNumber: currentHintLevel,
+                previousHints: previousHints,
+                hintLevel: currentHintLevel,
+                hintType: hintTypes[currentHintLevel].type
             })
         });
         
@@ -2047,7 +2571,30 @@ async function requestHintForEditor(userCode, screen) {
         if (!response.ok) throw new Error(data.error || 'Failed to generate hint');
         
         previousHints.push(data.hint.hint);
-        showHintForEditor(data.hint);
+        hintCount++;
+        
+        // Record hint usage
+        if (currentAttemptId) {
+            try {
+                const userId = currentUser?.id || 'anonymous';
+                await fetch('/api/record-hint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        challengeId: getChallengeIdFromTask(currentTask, currentTechnology) || currentTask,
+                        attemptId: currentAttemptId,
+                        hintLevel: currentHintLevel,
+                        hintType: hintTypes[currentHintLevel].type,
+                        hintContent: data.hint.hint
+                    })
+                });
+            } catch (error) {
+                console.error('Error recording hint:', error);
+            }
+        }
+        
+        showHintForEditor(data.hint, currentHintLevel, hintTypes[currentHintLevel].name);
         
     } catch (error) {
         console.error('Hint error:', error);
@@ -2057,29 +2604,49 @@ async function requestHintForEditor(userCode, screen) {
         }
     } finally {
         if (hintBtn) {
-            hintBtn.disabled = false;
-            hintBtn.textContent = hintCount >= 3 ? 'No more hints' : `Hint (${hintCount}/3)`;
+            const maxHints = 4; // 4 hint levels
+            hintBtn.disabled = currentHintLevel >= maxHints;
+            if (currentHintLevel >= maxHints) {
+                hintBtn.textContent = 'Solution revealed';
+            } else {
+                hintBtn.textContent = `Hint ${currentHintLevel}/${maxHints}`;
+            }
         }
         hideGlobalLoading();
     }
 }
 
-function showHintForEditor(hint) {
+function showHintForEditor(hint, level = 1, levelName = "Hint") {
     const hintDisplay = document.getElementById('hintDisplay');
     const output = document.getElementById('editorOutputContent');
+    
+    const levelBadges = {
+        1: { emoji: "💭", color: "#9b59b6", label: "Concept" },
+        2: { emoji: "🔍", color: "#3498db", label: "Process" },
+        3: { emoji: "🏗️", color: "#f39c12", label: "Skeleton" },
+        4: { emoji: "✅", color: "#00ff88", label: "Solution" }
+    };
+    
+    const badge = levelBadges[level] || levelBadges[1];
     
     if (hintDisplay) {
         hintDisplay.classList.remove('hidden');
         hintDisplay.innerHTML = `
-            <h4>💡 Hint ${hintCount}/3</h4>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 1.2em;">${badge.emoji}</span>
+                <h4 style="margin: 0; color: ${badge.color};">${badge.label} Hint (Level ${level}/4)</h4>
+            </div>
             <p>${hint.hint}</p>
         `;
     }
     
     if (output) {
-        output.innerHTML = `<div style="color: #00d4ff;">
-            <strong>💡 Hint ${hintCount}/3:</strong><br>
-            ${hint.hint}
+        output.innerHTML = `<div style="color: ${badge.color}; border-left: 3px solid ${badge.color}; padding-left: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 1.2em;">${badge.emoji}</span>
+                <strong>${badge.label} Hint (Level ${level}/4):</strong>
+            </div>
+            <div style="margin-top: 8px;">${hint.hint}</div>
         </div>`;
     }
 }
@@ -2681,7 +3248,7 @@ async function showDashboard() {
         
         const data = await response.json();
         if (data.success) {
-            displayDashboard(data);
+            await displayDashboard(data);
         } else {
             displayError('Failed to load dashboard');
         }
@@ -2693,13 +3260,73 @@ async function showDashboard() {
     }
 }
 
+// Display learning analytics
+function displayLearningAnalytics(analytics) {
+    // Create or get analytics section
+    let analyticsSection = document.getElementById('learningAnalytics');
+    if (!analyticsSection) {
+        analyticsSection = document.createElement('div');
+        analyticsSection.id = 'learningAnalytics';
+        analyticsSection.className = 'learning-analytics-section';
+        
+        // Insert into dashboard
+        const dashboardContent = document.querySelector('#dashboardView .dashboard-content');
+        if (dashboardContent) {
+            dashboardContent.appendChild(analyticsSection);
+        }
+    }
+    
+    const masteryEntries = Object.entries(analytics.conceptMastery || {});
+    const masteryHeatmap = masteryEntries.map(([concept, mastery]) => {
+        const percentage = Math.round(mastery * 100);
+        const color = mastery > 0.75 ? '#00ff88' : mastery > 0.5 ? '#fbbf24' : '#f87171';
+        return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 4px 0; background: rgba(30, 42, 58, 0.05); border-radius: 4px;">
+            <span>${concept}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 100px; height: 8px; background: rgba(30, 42, 58, 0.1); border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${percentage}%; height: 100%; background: ${color}; transition: width 0.3s;"></div>
+                </div>
+                <span style="font-weight: 600; color: ${color};">${percentage}%</span>
+            </div>
+        </div>`;
+    }).join('');
+    
+    analyticsSection.innerHTML = `
+        <h3 style="margin: 24px 0 16px 0; color: var(--navy);">📊 Learning Analytics</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="background: rgba(30, 42, 58, 0.05); padding: 16px; border-radius: 8px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Hint Dependency</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--navy);">${Math.round((analytics.hintDependency || 0) * 100)}%</div>
+            </div>
+            <div style="background: rgba(30, 42, 58, 0.05); padding: 16px; border-radius: 8px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Prediction Accuracy</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--navy);">${Math.round((analytics.predictionAccuracy || 0) * 100)}%</div>
+            </div>
+            <div style="background: rgba(30, 42, 58, 0.05); padding: 16px; border-radius: 8px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Transfer Success</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--navy);">${Math.round((analytics.transferSuccessRate || 0) * 100)}%</div>
+            </div>
+            <div style="background: rgba(30, 42, 58, 0.05); padding: 16px; border-radius: 8px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Avg. Time</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--navy);">${Math.round((analytics.averageCompletionTime || 0) / 60)}m</div>
+            </div>
+        </div>
+        ${masteryEntries.length > 0 ? `
+            <h4 style="margin: 16px 0 12px 0; color: var(--text);">Concept Mastery Heatmap</h4>
+            <div style="max-height: 300px; overflow-y: auto;">
+                ${masteryHeatmap}
+            </div>
+        ` : '<p style="color: var(--text-muted);">Complete challenges to see your concept mastery.</p>'}
+    `;
+}
+
 // Hide dashboard
 function hideDashboard() {
     if (dashboardView) dashboardView.classList.add('hidden');
 }
 
 // Display dashboard data
-function displayDashboard(data) {
+async function displayDashboard(data) {
     const { stats, recentActivity, continueLearning, completedChallenges } = data;
     
     // Update stats
@@ -2711,6 +3338,17 @@ function displayDashboard(data) {
     }
     if (document.getElementById('totalChallenges')) {
         document.getElementById('totalChallenges').textContent = stats.totalChallenges;
+    }
+    
+    // Load and display learning analytics
+    if (currentUser?.id) {
+        try {
+            const analyticsResponse = await fetch(`/api/learning-analytics?userId=${currentUser.id}`);
+            const analytics = await analyticsResponse.json();
+            displayLearningAnalytics(analytics);
+        } catch (error) {
+            console.error('Error loading learning analytics:', error);
+        }
     }
     
     // Display recent activity
